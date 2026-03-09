@@ -41,7 +41,7 @@
     <geom name="ground" type="plane" pos="0 0 0" size="5 5 0.1" rgba="0.85 0.85 0.85 1"/>
 
     <!-- Target object to grip -->
-    <body name="target_object" pos="0.45 0.15 0.05">
+    <body name="target_object" pos="-0.5 -0.35 0.05">
       <freejoint/>
       <inertial pos="0 0 0" mass="0.2" diaginertia="0.0002 0.0002 0.0002"/>
       <geom name="target_box" type="box" size="0.025 0.025 0.025" rgba="1 0.2 0.2 1"/>
@@ -142,26 +142,30 @@
 
                     <!-- ── Left finger (+Y side, slides open) ── -->
                     <body name="left_finger" pos="0 0.015 0.046">
-                      <joint name="left_finger_joint" type="slide" axis="0 1 0" range="0 0.04" damping="5"/>
+                      <joint name="left_finger_joint" type="slide" axis="0 1 0" range="0 0.04" damping="15"/>
                       <inertial pos="0 0.008 0.022" mass="0.08" diaginertia="0.00015 0.00008 0.00015"/>
                       <!-- Finger body -->
-                      <geom name="lf_body_vis"  type="box" pos="0 0.005 0.004" size="0.012 0.005 0.014" material="gripper_body" contype="0" conaffinity="0"/>
-                      <geom name="lf_tip_vis"   type="box" pos="0 0 0.032"     size="0.012 0.004 0.016" material="gripper_body" contype="0" conaffinity="0"/>
-                      <geom name="lf_tip_col"   type="box" pos="0 0 0.032"     size="0.012 0.004 0.016" rgba="0 0 0 0"/>
-                      <!-- Inner grip pad (serrated, high friction) -->
-                      <geom name="left_pad"     type="box" pos="0 -0.004 0.032" size="0.010 0.001 0.014" material="finger_pad" friction="1.8 0.2 0.2"/>
+                      <geom name="lf_body_vis"  type="box" pos="0 0.005 0.004" size="0.020 0.005 0.014" material="gripper_body" contype="0" conaffinity="0"/>
+                      <geom name="lf_tip_vis"   type="box" pos="0 0 0.032"     size="0.020 0.005 0.022" material="gripper_body" contype="0" conaffinity="0"/>
+                      <geom name="lf_tip_col"   type="box" pos="0 0 0.032"     size="0.020 0.005 0.022" rgba="0 0 0 0"/>
+                      <!-- Inner grip pad — wider/taller area, high friction -->
+                      <geom name="left_pad"     type="box" pos="0 -0.005 0.032" size="0.020 0.001 0.022" material="finger_pad" friction="4.0 1.0 1.0"/>
+                      <!-- Site defines the touch-sensor zone (same volume as the pad) -->
+                      <site name="left_pad_site" type="box" pos="0 -0.005 0.032" size="0.020 0.001 0.022" rgba="0 0 1 0"/>
                     </body>
 
                     <!-- ── Right finger (−Y side, slides open) ── -->
                     <body name="right_finger" pos="0 -0.015 0.046">
-                      <joint name="right_finger_joint" type="slide" axis="0 -1 0" range="0 0.04" damping="5"/>
+                      <joint name="right_finger_joint" type="slide" axis="0 -1 0" range="0 0.04" damping="15"/>
                       <inertial pos="0 -0.008 0.022" mass="0.08" diaginertia="0.00015 0.00008 0.00015"/>
                       <!-- Finger body -->
-                      <geom name="rf_body_vis"  type="box" pos="0 -0.005 0.004" size="0.012 0.005 0.014" material="gripper_body" contype="0" conaffinity="0"/>
-                      <geom name="rf_tip_vis"   type="box" pos="0 0 0.032"      size="0.012 0.004 0.016" material="gripper_body" contype="0" conaffinity="0"/>
-                      <geom name="rf_tip_col"   type="box" pos="0 0 0.032"      size="0.012 0.004 0.016" rgba="0 0 0 0"/>
-                      <!-- Inner grip pad (serrated, high friction) -->
-                      <geom name="right_pad"    type="box" pos="0 0.004 0.032"  size="0.010 0.001 0.014" material="finger_pad" friction="1.8 0.2 0.2"/>
+                      <geom name="rf_body_vis"  type="box" pos="0 -0.005 0.004" size="0.020 0.005 0.014" material="gripper_body" contype="0" conaffinity="0"/>
+                      <geom name="rf_tip_vis"   type="box" pos="0 0 0.032"      size="0.020 0.005 0.022" material="gripper_body" contype="0" conaffinity="0"/>
+                      <geom name="rf_tip_col"   type="box" pos="0 0 0.032"      size="0.020 0.005 0.022" rgba="0 0 0 0"/>
+                      <!-- Inner grip pad — wider/taller area, high friction -->
+                      <geom name="right_pad"    type="box" pos="0 0.005 0.032"  size="0.020 0.001 0.022" material="finger_pad" friction="4.0 1.0 1.0"/>
+                      <!-- Site defines the touch-sensor zone (same volume as the pad) -->
+                      <site name="right_pad_site" type="box" pos="0 0.005 0.032" size="0.020 0.001 0.022" rgba="0 0 1 0"/>
                     </body>
 
                     <!-- TCP (Tool Center Point) -->
@@ -191,6 +195,15 @@
     <position name="m_joint5" joint="joint5" kp="150" ctrlrange="-2.0944  2.0944"/>
     <position name="m_joint6" joint="joint6" kp="80"  ctrlrange="-3.14159 3.14159"/>
     <!-- Parallel-jaw gripper (coupled: one actuator drives both fingers) -->
-    <position name="m_gripper" joint="left_finger_joint" kp="80" ctrlrange="0 0.04"/>
+    <position name="m_gripper" joint="left_finger_joint" kp="250" ctrlrange="0 0.04"/>
+
   </actuator>
+  <sensor>
+      <!--framepos for the end-effector-->
+    <framepos objtype="site" objname="ee_site"/>
+    <framelinvel objtype="site" objname="ee_site"/>
+    <!-- Touch sensors on the inner grip pads – return total normal force (N) -->
+    <touch name="left_touch"  site="left_pad_site"/>
+    <touch name="right_touch" site="right_pad_site"/>
+  </sensor>
 </mujoco>
