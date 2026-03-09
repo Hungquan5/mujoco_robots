@@ -1,0 +1,313 @@
+<mujoco model="two_wheel_legged_robot">
+  <compiler angle="radian" coordinate="local"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="RK4">
+    <flag warmstart="enable"/>
+  </option>
+
+  <default>
+    <joint damping="0.5" armature="0.02"/>
+    <geom contype="1" conaffinity="1" friction="1.5 0.005 0.0001"/>
+    <motor ctrllimited="true" ctrlrange="-20 20"/>
+  </default>
+
+  <asset>
+    <!-- Sky -->
+    <texture type="skybox" builtin="gradient" rgb1="0.4 0.6 0.8" rgb2="0.05 0.05 0.15"
+             width="512" height="512"/>
+    <!-- Ground -->
+    <texture name="texplane" type="2d" builtin="checker" rgb1="0.25 0.25 0.25"
+             rgb2="0.15 0.15 0.15" width="512" height="512" mark="cross" markrgb="0.6 0.6 0.6"/>
+    <material name="matplane" reflectance="0.3" texture="texplane" texrepeat="5 5" texuniform="true"/>
+
+    <!-- Robot materials -->
+    <material name="body_dark"    rgba="0.15 0.15 0.18 1" specular="0.3" shininess="0.5"/>
+    <material name="body_cap"     rgba="0.12 0.12 0.14 1" specular="0.2"/>
+    <material name="frame_red"    rgba="0.55 0.08 0.12 1" specular="0.4" shininess="0.6"/>
+    <material name="frame_dark"   rgba="0.30 0.06 0.10 1" specular="0.3"/>
+    <material name="wheel_rubber" rgba="0.08 0.08 0.08 1" specular="0.1"/>
+    <material name="wheel_rim"    rgba="0.60 0.10 0.12 1" specular="0.5" shininess="0.7"/>
+    <material name="wheel_hub"    rgba="0.30 0.30 0.30 1" specular="0.4"/>
+    <material name="metal"        rgba="0.40 0.40 0.42 1" specular="0.5"/>
+    <material name="joint_metal"  rgba="0.30 0.30 0.32 1" specular="0.4"/>
+  </asset>
+
+  <worldbody>
+    <!-- Ground plane -->
+    <geom name="floor" pos="0 0 0" size="50 50 0.1" type="plane" material="matplane" condim="3"/>
+
+    <!-- Lighting -->
+    <light directional="true" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" pos="0 0 5" dir="0 0 -1"/>
+    <light directional="true" diffuse="0.3 0.3 0.3" specular="0.1 0.1 0.1" pos="2 2 4" dir="-0.3 -0.3 -1"/>
+
+    <!-- ================================================================ -->
+    <!--  BODY  (barrel-shaped torso, floating base)                      -->
+    <!--  Default standing height ~0.55 m                                 -->
+    <!--  Kinematic chain per leg:                                        -->
+    <!--    body → hip_joint → thigh → knee_joint → shin → wheel_joint   -->
+    <!-- ================================================================ -->
+    <body name="body" pos="0 0 0.68">
+      <freejoint name="root"/>
+      <inertial pos="0 0 -0.02" mass="3.0" diaginertia="0.02 0.02 0.015"/>
+
+      <!-- Main barrel / torso (shorter: 0.20m tall) -->
+      <geom name="barrel_main" type="cylinder" size="0.14 0.10"
+            pos="0 0 0.0" euler="0 0.12 0" material="body_dark"
+            contype="0" conaffinity="0"/>
+      <!-- End caps -->
+      <geom name="cap_top" type="cylinder" size="0.14 0.006"
+            pos="0 0 0.10" euler="0 0.12 0" material="body_cap"
+            contype="0" conaffinity="0"/>
+      <geom name="cap_bot" type="cylinder" size="0.14 0.006"
+            pos="0 0 -0.10" euler="0 0.12 0" material="body_cap"
+            contype="0" conaffinity="0"/>
+      <!-- Decorative ribs -->
+      <geom name="rib1" type="cylinder" size="0.143 0.007"
+            pos="0 0 -0.04" euler="0 0.12 0" material="body_cap"
+            contype="0" conaffinity="0"/>
+      <geom name="rib2" type="cylinder" size="0.143 0.007"
+            pos="0 0 0.06" euler="0 0.12 0" material="body_cap"
+            contype="0" conaffinity="0"/>
+
+      <!-- Handle on top-rear (lowered) -->
+      <geom name="handle_L" type="capsule" size="0.01"
+            fromto="-0.06 0.05 0.10  -0.08 0.05 0.18" material="metal"
+            contype="0" conaffinity="0"/>
+      <geom name="handle_R" type="capsule" size="0.01"
+            fromto="-0.06 -0.05 0.10  -0.08 -0.05 0.18" material="metal"
+            contype="0" conaffinity="0"/>
+      <geom name="handle_bar" type="capsule" size="0.012"
+            fromto="-0.08 0.05 0.18  -0.08 -0.05 0.18" material="frame_dark"
+            contype="0" conaffinity="0"/>
+
+      <!-- IMU site (center of body) -->
+      <site name="imu" pos="0 0 0.0" size="0.005"/>
+
+      <!-- Safety collision sphere at bottom of body -->
+      <geom name="body_collision" type="sphere" size="0.10"
+            pos="0 0 -0.08" rgba="0.15 0.15 0.18 0"
+            mass="0.01" friction="0.5 0.005 0.0001" condim="3"/>
+
+      <!-- ============================================================ -->
+      <!--  LEFT LEG                                                     -->
+      <!--  body → hip_joint → thigh → knee_joint → shin → wheel        -->
+      <!-- ============================================================ -->
+      <body name="left_thigh" pos="0 0.12 -0.10">
+        <joint name="left_hip" type="hinge" axis="0 1 0"
+               pos="0 0 0" range="-1.2 1.2" damping="1.0" armature="0.05"
+               stiffness="3"/>
+        <inertial pos="0 0.02 -0.10" mass="0.6" diaginertia="0.003 0.003 0.001"/>
+
+        <!-- Hip joint housing -->
+        <geom name="left_hip_housing" type="cylinder" size="0.035 0.04"
+              pos="0 0.02 0" euler="1.5708 0 0" material="joint_metal"
+              contype="0" conaffinity="0"/>
+
+        <!-- Thigh lattice frame (two main struts + cross braces) -->
+        <geom name="lt_strut_front" type="capsule" size="0.012"
+              fromto="0.02 0.02 -0.01  0.015 0.04 -0.20" material="frame_red"
+              contype="0" conaffinity="0"/>
+        <geom name="lt_strut_rear" type="capsule" size="0.012"
+              fromto="-0.025 0.02 -0.01  -0.015 0.04 -0.20" material="frame_red"
+              contype="0" conaffinity="0"/>
+        <!-- Cross brace X pattern -->
+        <geom name="lt_cross1" type="capsule" size="0.006"
+              fromto="0.02 0.02 -0.01  -0.015 0.04 -0.20" material="frame_dark"
+              contype="0" conaffinity="0"/>
+        <geom name="lt_cross2" type="capsule" size="0.006"
+              fromto="-0.025 0.02 -0.01  0.015 0.04 -0.20" material="frame_dark"
+              contype="0" conaffinity="0"/>
+        <!-- Horizontal brace -->
+        <geom name="lt_brace_mid" type="capsule" size="0.008"
+              fromto="0.018 0.03 -0.10  -0.018 0.03 -0.10" material="frame_red"
+              contype="0" conaffinity="0"/>
+
+        <!-- ======================================================== -->
+        <!--  LEFT SHIN (lower leg)                                    -->
+        <!-- ======================================================== -->
+        <body name="left_shin" pos="0 0.04 -0.20">
+          <joint name="left_knee" type="hinge" axis="0 1 0"
+                 pos="0 0 0" range="-1.8 1.8" damping="0.8" armature="0.04"
+                 stiffness="2"/>
+          <inertial pos="0 0.01 -0.14" mass="0.4" diaginertia="0.003 0.003 0.0006"/>
+
+          <!-- Knee joint housing -->
+          <geom name="left_knee_housing" type="cylinder" size="0.030 0.035"
+                pos="0 0.01 0" euler="1.5708 0 0" material="joint_metal"
+                contype="0" conaffinity="0"/>
+
+          <!-- Shin struts (longer: 0.28m) -->
+          <geom name="ls_strut_front" type="capsule" size="0.011"
+                fromto="0.015 0.01 -0.01  0.01 0.02 -0.27" material="frame_red"
+                contype="0" conaffinity="0"/>
+          <geom name="ls_strut_rear" type="capsule" size="0.011"
+                fromto="-0.02 0.01 -0.01  -0.01 0.02 -0.27" material="frame_red"
+                contype="0" conaffinity="0"/>
+          <!-- Cross braces -->
+          <geom name="ls_cross1" type="capsule" size="0.005"
+                fromto="0.015 0.01 -0.01  -0.01 0.02 -0.27" material="frame_dark"
+                contype="0" conaffinity="0"/>
+          <geom name="ls_cross2" type="capsule" size="0.005"
+                fromto="-0.02 0.01 -0.01  0.01 0.02 -0.27" material="frame_dark"
+                contype="0" conaffinity="0"/>
+          <!-- Mid brace -->
+          <geom name="ls_brace_mid" type="capsule" size="0.007"
+                fromto="0.013 0.015 -0.14  -0.015 0.015 -0.14" material="frame_red"
+                contype="0" conaffinity="0"/>
+
+          <!-- ======================================================== -->
+          <!--  LEFT WHEEL                                               -->
+          <!-- ======================================================== -->
+          <body name="left_wheel" pos="0 0.02 -0.28">
+            <joint name="left_wheel_joint" type="hinge" axis="0 1 0"
+                   damping="0.03" armature="0.01"/>
+            <inertial pos="0 0 0" mass="0.8" diaginertia="0.003 0.003 0.005"/>
+
+            <!-- Tire -->
+            <geom name="left_tire" type="cylinder" size="0.12 0.04"
+                  euler="1.5708 0 0" material="wheel_rubber"
+                  friction="2.0 0.005 0.0001" condim="4"/>
+            <!-- Rim -->
+            <geom name="left_rim" type="cylinder" size="0.09 0.035"
+                  euler="1.5708 0 0" material="wheel_rim"
+                  contype="0" conaffinity="0"/>
+            <!-- Hub -->
+            <geom name="left_hub" type="cylinder" size="0.03 0.042"
+                  euler="1.5708 0 0" material="wheel_hub"
+                  contype="0" conaffinity="0"/>
+          </body>
+        </body>
+      </body>
+
+      <!-- ============================================================ -->
+      <!--  RIGHT LEG  (mirrored)                                       -->
+      <!-- ============================================================ -->
+      <body name="right_thigh" pos="0 -0.12 -0.10">
+        <joint name="right_hip" type="hinge" axis="0 1 0"
+               pos="0 0 0" range="-1.2 1.2" damping="1.0" armature="0.05"
+               stiffness="3"/>
+        <inertial pos="0 -0.02 -0.10" mass="0.6" diaginertia="0.003 0.003 0.001"/>
+
+        <!-- Hip joint housing -->
+        <geom name="right_hip_housing" type="cylinder" size="0.035 0.04"
+              pos="0 -0.02 0" euler="1.5708 0 0" material="joint_metal"
+              contype="0" conaffinity="0"/>
+
+        <!-- Thigh lattice frame -->
+        <geom name="rt_strut_front" type="capsule" size="0.012"
+              fromto="0.02 -0.02 -0.01  0.015 -0.04 -0.20" material="frame_red"
+              contype="0" conaffinity="0"/>
+        <geom name="rt_strut_rear" type="capsule" size="0.012"
+              fromto="-0.025 -0.02 -0.01  -0.015 -0.04 -0.20" material="frame_red"
+              contype="0" conaffinity="0"/>
+        <geom name="rt_cross1" type="capsule" size="0.006"
+              fromto="0.02 -0.02 -0.01  -0.015 -0.04 -0.20" material="frame_dark"
+              contype="0" conaffinity="0"/>
+        <geom name="rt_cross2" type="capsule" size="0.006"
+              fromto="-0.025 -0.02 -0.01  0.015 -0.04 -0.20" material="frame_dark"
+              contype="0" conaffinity="0"/>
+        <geom name="rt_brace_mid" type="capsule" size="0.008"
+              fromto="0.018 -0.03 -0.10  -0.018 -0.03 -0.10" material="frame_red"
+              contype="0" conaffinity="0"/>
+
+        <!-- ======================================================== -->
+        <!--  RIGHT SHIN                                               -->
+        <!-- ======================================================== -->
+        <body name="right_shin" pos="0 -0.04 -0.20">
+          <joint name="right_knee" type="hinge" axis="0 1 0"
+                 pos="0 0 0" range="-1.8 1.8" damping="0.8" armature="0.04"
+                 stiffness="2"/>
+          <inertial pos="0 -0.01 -0.14" mass="0.4" diaginertia="0.003 0.003 0.0006"/>
+
+          <!-- Knee joint housing -->
+          <geom name="right_knee_housing" type="cylinder" size="0.030 0.035"
+                pos="0 -0.01 0" euler="1.5708 0 0" material="joint_metal"
+                contype="0" conaffinity="0"/>
+
+          <!-- Shin struts (longer: 0.28m) -->
+          <geom name="rs_strut_front" type="capsule" size="0.011"
+                fromto="0.015 -0.01 -0.01  0.01 -0.02 -0.27" material="frame_red"
+                contype="0" conaffinity="0"/>
+          <geom name="rs_strut_rear" type="capsule" size="0.011"
+                fromto="-0.02 -0.01 -0.01  -0.01 -0.02 -0.27" material="frame_red"
+                contype="0" conaffinity="0"/>
+          <geom name="rs_cross1" type="capsule" size="0.005"
+                fromto="0.015 -0.01 -0.01  -0.01 -0.02 -0.27" material="frame_dark"
+                contype="0" conaffinity="0"/>
+          <geom name="rs_cross2" type="capsule" size="0.005"
+                fromto="-0.02 -0.01 -0.01  0.01 -0.02 -0.27" material="frame_dark"
+                contype="0" conaffinity="0"/>
+          <geom name="rs_brace_mid" type="capsule" size="0.007"
+                fromto="0.013 -0.015 -0.14  -0.015 -0.015 -0.14" material="frame_red"
+                contype="0" conaffinity="0"/>
+
+          <!-- ======================================================== -->
+          <!--  RIGHT WHEEL                                              -->
+          <!-- ======================================================== -->
+          <body name="right_wheel" pos="0 -0.02 -0.28">
+            <joint name="right_wheel_joint" type="hinge" axis="0 1 0"
+                   damping="0.03" armature="0.01"/>
+            <inertial pos="0 0 0" mass="0.8" diaginertia="0.003 0.003 0.005"/>
+
+            <!-- Tire -->
+            <geom name="right_tire" type="cylinder" size="0.12 0.04"
+                  euler="1.5708 0 0" material="wheel_rubber"
+                  friction="2.0 0.005 0.0001" condim="4"/>
+            <!-- Rim -->
+            <geom name="right_rim" type="cylinder" size="0.09 0.035"
+                  euler="1.5708 0 0" material="wheel_rim"
+                  contype="0" conaffinity="0"/>
+            <!-- Hub -->
+            <geom name="right_hub" type="cylinder" size="0.03 0.042"
+                  euler="1.5708 0 0" material="wheel_hub"
+                  contype="0" conaffinity="0"/>
+          </body>
+        </body>
+      </body>
+
+    </body> <!-- end body -->
+  </worldbody>
+
+  <!-- ================================================================ -->
+  <!--  ACTUATORS  (6 total: 2 wheels + 2 hips + 2 knees)              -->
+  <!-- ================================================================ -->
+  <actuator>
+    <!-- Wheel motors (driving) -->
+    <motor name="left_wheel_motor"  joint="left_wheel_joint"  gear="1" ctrllimited="true" ctrlrange="-40 40"/>
+    <motor name="right_wheel_motor" joint="right_wheel_joint" gear="1" ctrllimited="true" ctrlrange="-40 40"/>
+    <!-- Hip motors (thigh rotation - posture control) -->
+    <motor name="left_hip_motor"  joint="left_hip"  gear="1" ctrllimited="true" ctrlrange="-50 50"/>
+    <motor name="right_hip_motor" joint="right_hip" gear="1" ctrllimited="true" ctrlrange="-50 50"/>
+    <!-- Knee motors (shin rotation - posture control) -->
+    <motor name="left_knee_motor"  joint="left_knee"  gear="1" ctrllimited="true" ctrlrange="-50 50"/>
+    <motor name="right_knee_motor" joint="right_knee" gear="1" ctrllimited="true" ctrlrange="-50 50"/>
+  </actuator>
+
+  <!-- ================================================================ -->
+  <!--  SENSORS                                                         -->
+  <!-- ================================================================ -->
+  <sensor>
+    <!-- Body IMU -->
+    <framequat      name="body_quat"    objtype="body" objname="body"/>
+    <gyro           name="body_gyro"    site="imu"/>
+    <accelerometer  name="body_accel"   site="imu"/>
+    <framepos       name="body_pos"     objtype="body" objname="body"/>
+    <framelinvel    name="body_vel"     objtype="body" objname="body"/>
+
+    <!-- Leg joints -->
+    <jointpos name="left_hip_pos"   joint="left_hip"/>
+    <jointvel name="left_hip_vel"   joint="left_hip"/>
+    <jointpos name="left_knee_pos"  joint="left_knee"/>
+    <jointvel name="left_knee_vel"  joint="left_knee"/>
+    <jointpos name="right_hip_pos"  joint="right_hip"/>
+    <jointvel name="right_hip_vel"  joint="right_hip"/>
+    <jointpos name="right_knee_pos" joint="right_knee"/>
+    <jointvel name="right_knee_vel" joint="right_knee"/>
+
+    <!-- Wheel encoders -->
+    <jointpos name="left_wheel_pos"  joint="left_wheel_joint"/>
+    <jointvel name="left_wheel_vel"  joint="left_wheel_joint"/>
+    <jointpos name="right_wheel_pos" joint="right_wheel_joint"/>
+    <jointvel name="right_wheel_vel" joint="right_wheel_joint"/>
+  </sensor>
+</mujoco>

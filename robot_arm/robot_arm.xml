@@ -1,0 +1,196 @@
+<mujoco model="industrial_6axis_arm">
+  <!--
+    6-AXIS INDUSTRIAL ROBOT ARM
+    ═══════════════════════════════════════════════════════════
+    Standard anthropomorphic kinematic structure with:
+      • Shoulder horizontal offset  (a1 = 60 mm)
+      • Upper arm                   (a2 = 280 mm)
+      • Elbow offset                (a3 = 25 mm)
+      • Forearm (inline J4 roll)    (d4 = 250 mm)
+      • Spherical wrist (J4-J5-J6 axes intersect)
+      • ISO 9409-1 tool flange
+    Reach ≈ 700 mm · Payload ≈ 6 kg
+    ═══════════════════════════════════════════════════════════
+    Axis 1  base rotation      Z
+    Axis 2  shoulder lift       Y
+    Axis 3  elbow               Y
+    Axis 4  forearm roll        Z  (inline with forearm)
+    Axis 5  wrist bend          Y
+    Axis 6  tool rotation       Z  (inline with tool)
+  -->
+  <compiler angle="radian" coordinate="local" inertiafromgeom="false"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="RK4"/>
+
+  <default>
+    <joint damping="3" armature="0.08" limited="true"/>
+    <geom contype="1" conaffinity="1" friction="0.8 0.1 0.1" density="2700"/>
+  </default>
+
+  <asset>
+    <material name="metal_silver"  rgba="0.78 0.78 0.80 1" specular="0.8" shininess="0.9"/>
+    <material name="metal_dark"    rgba="0.30 0.30 0.33 1" specular="0.6" shininess="0.7"/>
+    <material name="joint_orange"  rgba="0.95 0.55 0.10 1" specular="0.6" shininess="0.7"/>
+    <material name="base_charcoal" rgba="0.18 0.18 0.20 1" specular="0.5" shininess="0.6"/>
+    <material name="flange_steel"  rgba="0.60 0.62 0.65 1" specular="0.9" shininess="0.95"/>
+    <material name="gripper_body"  rgba="0.12 0.12 0.15 1" specular="0.4" shininess="0.5"/>
+    <material name="finger_pad"    rgba="0.40 0.40 0.45 1" specular="0.3" shininess="0.3"/>
+  </asset>
+
+  <worldbody>
+    <!-- Ground plane -->
+    <geom name="ground" type="plane" pos="0 0 0" size="5 5 0.1" rgba="0.85 0.85 0.85 1"/>
+
+    <!-- Target object to grip -->
+    <body name="target_object" pos="0.45 0.15 0.05">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.2" diaginertia="0.0002 0.0002 0.0002"/>
+      <geom name="target_box" type="box" size="0.025 0.025 0.025" rgba="1 0.2 0.2 1"/>
+    </body>
+
+    <!-- ══════════════════════════════════════════════════════
+         BASE PEDESTAL — bolted to ground
+         ══════════════════════════════════════════════════════ -->
+    <body name="base_link" pos="0 0 0">
+      <inertial pos="0 0 0.06" mass="12.0" diaginertia="0.10 0.10 0.06"/>
+      <!-- Heavy cast-iron base plate -->
+      <geom name="base_plate"   type="cylinder" pos="0 0 0.012" size="0.13 0.012" material="base_charcoal" contype="0" conaffinity="0"/>
+      <geom name="base_body"    type="cylinder" pos="0 0 0.060" size="0.095 0.035" material="base_charcoal" contype="0" conaffinity="0"/>
+      <geom name="base_col"     type="cylinder" pos="0 0 0.050" size="0.13 0.050"  rgba="0 0 0 0"/>
+      <!-- Orange accent ring at top of base -->
+      <geom name="base_accent"  type="cylinder" pos="0 0 0.098" size="0.088 0.003" material="joint_orange" contype="0" conaffinity="0"/>
+
+      <!-- ═══ AXIS 1 — Base rotation (Z) ═══
+           Turret / shoulder tower that rotates above the base -->
+      <body name="link1" pos="0 0 0.10">
+        <joint name="joint1" type="hinge" axis="0 0 1" range="-3.14159 3.14159"/>
+        <inertial pos="0.02 0 0.06" mass="5.5" diaginertia="0.04 0.04 0.02"/>
+        <!-- Rotating turret -->
+        <geom name="j1_ring"    type="cylinder" pos="0 0 0.004"  size="0.084 0.006" material="joint_orange" contype="0" conaffinity="0"/>
+        <geom name="j1_turret"  type="cylinder" pos="0 0 0.050"  size="0.072 0.040" material="metal_silver" contype="0" conaffinity="0"/>
+        <geom name="j1_col"     type="cylinder" pos="0 0 0.050"  size="0.072 0.040" rgba="0 0 0 0"/>
+        <!-- Shoulder housing — offset from center (this is the key industrial feature!) -->
+        <geom name="j1_shoulder_housing" type="box" pos="0.03 0 0.10" size="0.05 0.06 0.016" material="metal_silver" contype="0" conaffinity="0"/>
+
+        <!-- ═══ AXIS 2 — Shoulder lift (Y) ═══
+             OFFSET 60mm forward from J1 axis — characteristic of 6-axis industrial arms -->
+        <body name="link2" pos="0.06 0 0.11">
+          <joint name="joint2" type="hinge" axis="0 1 0" range="-2.3562 2.3562"/>
+          <inertial pos="-0.02 0 0.14" mass="4.5" diaginertia="0.06 0.06 0.01"/>
+          <!-- Shoulder joint sphere (orange hub) -->
+          <geom name="j2_hub"    type="sphere"  pos="0 0 0"  size="0.058" material="joint_orange" contype="0" conaffinity="0"/>
+          <!-- Upper arm — muscular capsule rising 280mm -->
+          <geom name="j2_arm_vis" type="capsule" fromto="0 0 0.04  -0.01 0 0.26" size="0.050" material="metal_silver" contype="0" conaffinity="0"/>
+          <geom name="j2_arm_col" type="capsule" fromto="0 0 0.04  -0.01 0 0.26" size="0.050" rgba="0 0 0 0"/>
+          <!-- KUKA-style brand plate on upper arm -->
+          <geom name="j2_plate"   type="box" pos="0.051 0 0.15" size="0.002 0.035 0.06" material="metal_dark" contype="0" conaffinity="0"/>
+
+          <!-- ═══ AXIS 3 — Elbow (Y) ═══
+               At top of upper arm, with small offset a3 = 25mm -->
+          <body name="link3" pos="-0.025 0 0.28">
+            <joint name="joint3" type="hinge" axis="0 1 0" range="-2.53 2.53"/>
+            <inertial pos="0.01 0 0.04" mass="3.0" diaginertia="0.02 0.02 0.005"/>
+            <!-- Elbow joint sphere (orange hub) -->
+            <geom name="j3_hub"      type="sphere"   pos="0 0 0"    size="0.048" material="joint_orange" contype="0" conaffinity="0"/>
+            <!-- Short elbow housing that transitions to the forearm -->
+            <geom name="j3_housing"  type="capsule"   fromto="0 0 0.02  0 0 0.06" size="0.042" material="metal_silver" contype="0" conaffinity="0"/>
+            <geom name="j3_col"      type="capsule"   fromto="0 0 0.02  0 0 0.06" size="0.042" rgba="0 0 0 0"/>
+
+            <!-- ═══ AXIS 4 — Forearm inline roll (Z) ═══
+                 J4 rotates the entire forearm tube about its own long axis
+                 This is the defining feature of an industrial 6-axis arm -->
+            <body name="link4" pos="0 0 0.065">
+              <joint name="joint4" type="hinge" axis="0 0 1" range="-3.14159 3.14159"/>
+              <inertial pos="0 0 0.11" mass="2.2" diaginertia="0.015 0.015 0.003"/>
+              <!-- Orange ring at J4 start -->
+              <geom name="j4_ring"     type="cylinder" pos="0 0 0.003" size="0.040 0.005" material="joint_orange" contype="0" conaffinity="0"/>
+              <!-- Forearm tube — 250mm long cylindrical segment that rolls inline -->
+              <geom name="j4_tube_vis" type="capsule"  fromto="0 0 0.01  0 0 0.22" size="0.036" material="metal_silver" contype="0" conaffinity="0"/>
+              <geom name="j4_tube_col" type="capsule"  fromto="0 0 0.01  0 0 0.22" size="0.036" rgba="0 0 0 0"/>
+              <!-- Decorative seam line along the forearm -->
+              <geom name="j4_seam"     type="box"      pos="0.037 0 0.12" size="0.001 0.008 0.08" material="metal_dark" contype="0" conaffinity="0"/>
+
+              <!-- ═══ AXIS 5 — Wrist bend (Y) ═══
+                   Compact wrist — axes 4, 5, 6 form a spherical wrist -->
+              <body name="link5" pos="0 0 0.24">
+                <joint name="joint5" type="hinge" axis="0 1 0" range="-2.0944 2.0944"/>
+                <inertial pos="0 0 0.022" mass="1.0" diaginertia="0.003 0.003 0.002"/>
+                <!-- Wrist hub (orange) -->
+                <geom name="j5_hub"      type="sphere"   pos="0 0 0"     size="0.032" material="joint_orange" contype="0" conaffinity="0"/>
+                <!-- Wrist body -->
+                <geom name="j5_body_vis" type="cylinder"  pos="0 0 0.026" size="0.028 0.016" material="metal_silver" contype="0" conaffinity="0"/>
+                <geom name="j5_body_col" type="cylinder"  pos="0 0 0.026" size="0.028 0.016" rgba="0 0 0 0"/>
+
+                <!-- ═══ AXIS 6 — Tool flange rotation (Z) ═══ -->
+                <body name="link6" pos="0 0 0.045">
+                  <joint name="joint6" type="hinge" axis="0 0 1" range="-3.14159 3.14159"/>
+                  <inertial pos="0 0 0.012" mass="0.5" diaginertia="0.001 0.001 0.001"/>
+                  <!-- ISO 9409-1 tool flange -->
+                  <geom name="flange_vis"    type="cylinder" pos="0 0 0.006" size="0.032 0.006" material="flange_steel" contype="0" conaffinity="0"/>
+                  <geom name="flange_col"    type="cylinder" pos="0 0 0.006" size="0.032 0.006" rgba="0 0 0 0"/>
+                  <geom name="flange_index"  type="cylinder" pos="0 0 0.013" size="0.030 0.001" rgba="0.2 0.75 0.3 1" contype="0" conaffinity="0"/>
+
+                  <!-- ══════════════════════════════════════════
+                       INDUSTRIAL PARALLEL-JAW GRIPPER
+                       Stroke: 0 – 80 mm (±40 mm each finger)
+                       ══════════════════════════════════════════ -->
+                  <body name="gripper_body" pos="0 0 0.015">
+                    <inertial pos="0 0 0.025" mass="0.6" diaginertia="0.002 0.002 0.001"/>
+                    <!-- Gripper actuator housing -->
+                    <geom name="grip_mount_vis"  type="cylinder" pos="0 0 0.005" size="0.028 0.005" material="gripper_body" contype="0" conaffinity="0"/>
+                    <geom name="grip_body_vis"   type="box"      pos="0 0 0.028" size="0.025 0.048 0.018" material="gripper_body" contype="0" conaffinity="0"/>
+                    <geom name="grip_body_col"   type="box"      pos="0 0 0.028" size="0.025 0.048 0.018" rgba="0 0 0 0"/>
+
+                    <!-- ── Left finger (+Y side, slides open) ── -->
+                    <body name="left_finger" pos="0 0.015 0.046">
+                      <joint name="left_finger_joint" type="slide" axis="0 1 0" range="0 0.04" damping="5"/>
+                      <inertial pos="0 0.008 0.022" mass="0.08" diaginertia="0.00015 0.00008 0.00015"/>
+                      <!-- Finger body -->
+                      <geom name="lf_body_vis"  type="box" pos="0 0.005 0.004" size="0.012 0.005 0.014" material="gripper_body" contype="0" conaffinity="0"/>
+                      <geom name="lf_tip_vis"   type="box" pos="0 0 0.032"     size="0.012 0.004 0.016" material="gripper_body" contype="0" conaffinity="0"/>
+                      <geom name="lf_tip_col"   type="box" pos="0 0 0.032"     size="0.012 0.004 0.016" rgba="0 0 0 0"/>
+                      <!-- Inner grip pad (serrated, high friction) -->
+                      <geom name="left_pad"     type="box" pos="0 -0.004 0.032" size="0.010 0.001 0.014" material="finger_pad" friction="1.8 0.2 0.2"/>
+                    </body>
+
+                    <!-- ── Right finger (−Y side, slides open) ── -->
+                    <body name="right_finger" pos="0 -0.015 0.046">
+                      <joint name="right_finger_joint" type="slide" axis="0 -1 0" range="0 0.04" damping="5"/>
+                      <inertial pos="0 -0.008 0.022" mass="0.08" diaginertia="0.00015 0.00008 0.00015"/>
+                      <!-- Finger body -->
+                      <geom name="rf_body_vis"  type="box" pos="0 -0.005 0.004" size="0.012 0.005 0.014" material="gripper_body" contype="0" conaffinity="0"/>
+                      <geom name="rf_tip_vis"   type="box" pos="0 0 0.032"      size="0.012 0.004 0.016" material="gripper_body" contype="0" conaffinity="0"/>
+                      <geom name="rf_tip_col"   type="box" pos="0 0 0.032"      size="0.012 0.004 0.016" rgba="0 0 0 0"/>
+                      <!-- Inner grip pad (serrated, high friction) -->
+                      <geom name="right_pad"    type="box" pos="0 0.004 0.032"  size="0.010 0.001 0.014" material="finger_pad" friction="1.8 0.2 0.2"/>
+                    </body>
+
+                    <!-- TCP (Tool Center Point) -->
+                    <site name="ee_site" pos="0 0 0.06" size="0.005" rgba="1 0 0 1"/>
+                  </body>
+
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <equality>
+    <!-- Couple left & right gripper fingers (mirror motion) -->
+    <joint joint1="left_finger_joint" joint2="right_finger_joint" polycoef="0 1 0 0 0"/>
+  </equality>
+
+  <actuator>
+    <!-- 6-axis arm — position servos with industrial-grade stiffness -->
+    <position name="m_joint1" joint="joint1" kp="400" ctrlrange="-3.14159 3.14159"/>
+    <position name="m_joint2" joint="joint2" kp="400" ctrlrange="-2.3562  2.3562"/>
+    <position name="m_joint3" joint="joint3" kp="300" ctrlrange="-2.53    2.53"/>
+    <position name="m_joint4" joint="joint4" kp="150" ctrlrange="-3.14159 3.14159"/>
+    <position name="m_joint5" joint="joint5" kp="150" ctrlrange="-2.0944  2.0944"/>
+    <position name="m_joint6" joint="joint6" kp="80"  ctrlrange="-3.14159 3.14159"/>
+    <!-- Parallel-jaw gripper (coupled: one actuator drives both fingers) -->
+    <position name="m_gripper" joint="left_finger_joint" kp="80" ctrlrange="0 0.04"/>
+  </actuator>
+</mujoco>

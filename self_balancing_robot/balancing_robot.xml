@@ -1,0 +1,259 @@
+<mujoco model="two_wheel_handle_robot">
+  <compiler angle="radian" coordinate="local"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="RK4">
+    <flag warmstart="enable"/>
+  </option>
+
+  <default>
+    <joint damping="0.05" armature="0.01"/>
+    <geom contype="1" conaffinity="1" friction="1.5 0.005 0.0001"/>
+    <motor ctrllimited="true" ctrlrange="-15 15"/>
+  </default>
+
+  <asset>
+    <!-- Sky -->
+    <texture type="skybox" builtin="gradient" rgb1="0.4 0.6 0.8" rgb2="0.05 0.05 0.15" width="512" height="512"/>
+    <!-- Ground -->
+    <texture name="texplane" type="2d" builtin="checker" rgb1="0.25 0.25 0.25" rgb2="0.15 0.15 0.15"
+             width="512" height="512" mark="cross" markrgb="0.6 0.6 0.6"/>
+    <material name="matplane" reflectance="0.3" texture="texplane" texrepeat="5 5" texuniform="true"/>
+    <!-- Body materials -->
+    <material name="barrel_body" rgba="0.15 0.15 0.18 1" specular="0.3" shininess="0.5"/>
+    <material name="barrel_cap" rgba="0.12 0.12 0.14 1" specular="0.2"/>
+    <material name="frame_red" rgba="0.55 0.08 0.12 1" specular="0.4" shininess="0.6"/>
+    <material name="frame_dark" rgba="0.25 0.05 0.08 1" specular="0.3"/>
+    <material name="wheel_rubber" rgba="0.1 0.1 0.1 1" specular="0.1"/>
+    <material name="wheel_rim" rgba="0.6 0.1 0.12 1" specular="0.5" shininess="0.7"/>
+    <material name="wheel_hub" rgba="0.3 0.3 0.3 1" specular="0.4"/>
+    <material name="axle_metal" rgba="0.35 0.35 0.38 1" specular="0.5"/>
+    <material name="spring_metal" rgba="0.3 0.3 0.32 1" specular="0.4"/>
+    <material name="handle_grip" rgba="0.2 0.2 0.2 1" specular="0.1"/>
+  </asset>
+
+  <worldbody>
+    <!-- Ground -->
+    <geom name="floor" pos="0 0 0" size="50 50 0.1" type="plane" material="matplane" condim="3"/>
+
+    <!-- Lighting -->
+    <light directional="true" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" pos="0 0 5" dir="0 0 -1"/>
+    <light directional="true" diffuse="0.3 0.3 0.3" specular="0.1 0.1 0.1" pos="2 2 4" dir="-0.3 -0.3 -1"/>
+
+    <!-- ============================================================ -->
+    <!-- ROBOT BODY                                                    -->
+    <!-- Wheel radius=0.15, axle height=0.15                          -->
+    <!-- ============================================================ -->
+    <body name="chassis" pos="0 0 0.15">
+      <freejoint name="root"/>
+
+      <!-- ===== WHEELS ===== -->
+      <!-- Left Wheel -->
+      <body name="left_wheel" pos="0 0.22 0">
+        <joint name="left_wheel_joint" type="hinge" axis="0 1 0" damping="0.02" armature="0.005"/>
+        <!-- Tire -->
+        <geom name="left_tire" type="cylinder" size="0.15 0.04"
+              euler="1.5708 0 0" material="wheel_rubber" mass="0.8"
+              friction="2.0 0.005 0.0001" condim="4"/>
+        <!-- Rim -->
+        <geom name="left_rim" type="cylinder" size="0.11 0.035"
+              euler="1.5708 0 0" material="wheel_rim" mass="0.1"
+              contype="0" conaffinity="0"/>
+        <!-- Hub -->
+        <geom name="left_hub" type="cylinder" size="0.04 0.042"
+              euler="1.5708 0 0" material="wheel_hub" mass="0.05"
+              contype="0" conaffinity="0"/>
+        <!-- Spokes (visual) -->
+        <geom name="left_spoke1" type="box" size="0.12 0.008 0.008"
+              pos="0 0 0" euler="1.5708 0 0" material="wheel_rim" mass="0.01"
+              contype="0" conaffinity="0"/>
+        <geom name="left_spoke2" type="box" size="0.008 0.008 0.12"
+              pos="0 0 0" euler="1.5708 0 0" material="wheel_rim" mass="0.01"
+              contype="0" conaffinity="0"/>
+      </body>
+
+      <!-- Right Wheel -->
+      <body name="right_wheel" pos="0 -0.22 0">
+        <joint name="right_wheel_joint" type="hinge" axis="0 1 0" damping="0.02" armature="0.005"/>
+        <!-- Tire -->
+        <geom name="right_tire" type="cylinder" size="0.15 0.04"
+              euler="1.5708 0 0" material="wheel_rubber" mass="0.8"
+              friction="2.0 0.005 0.0001" condim="4"/>
+        <!-- Rim -->
+        <geom name="right_rim" type="cylinder" size="0.11 0.035"
+              euler="1.5708 0 0" material="wheel_rim" mass="0.1"
+              contype="0" conaffinity="0"/>
+        <!-- Hub -->
+        <geom name="right_hub" type="cylinder" size="0.04 0.042"
+              euler="1.5708 0 0" material="wheel_hub" mass="0.05"
+              contype="0" conaffinity="0"/>
+        <!-- Spokes (visual) -->
+        <geom name="right_spoke1" type="box" size="0.12 0.008 0.008"
+              pos="0 0 0" euler="1.5708 0 0" material="wheel_rim" mass="0.01"
+              contype="0" conaffinity="0"/>
+        <geom name="right_spoke2" type="box" size="0.008 0.008 0.12"
+              pos="0 0 0" euler="1.5708 0 0" material="wheel_rim" mass="0.01"
+              contype="0" conaffinity="0"/>
+      </body>
+
+      <!-- ===== AXLE BAR ===== -->
+      <geom name="axle_bar" type="cylinder" size="0.02 0.22"
+            pos="0 0 0" euler="1.5708 0 0" material="axle_metal" mass="0.3"
+            contype="0" conaffinity="0"/>
+
+      <!-- ===== LEFT LEG FRAME (red lattice truss) ===== -->
+      <!-- Main upright strut -->
+      <geom name="left_leg_main" type="capsule" size="0.012"
+            fromto="0.02 0.16 0.02  -0.04 0.10 0.42" material="frame_red" mass="0.15"
+            contype="0" conaffinity="0"/>
+      <!-- Rear upright strut -->
+      <geom name="left_leg_rear" type="capsule" size="0.012"
+            fromto="-0.06 0.16 0.02  -0.04 0.10 0.42" material="frame_red" mass="0.15"
+            contype="0" conaffinity="0"/>
+      <!-- Cross braces -->
+      <geom name="left_cross1" type="capsule" size="0.008"
+            fromto="0.02 0.16 0.02  -0.06 0.16 0.02" material="frame_dark" mass="0.03"
+            contype="0" conaffinity="0"/>
+      <geom name="left_cross2" type="capsule" size="0.008"
+            fromto="-0.01 0.14 0.12  -0.05 0.12 0.22" material="frame_dark" mass="0.03"
+            contype="0" conaffinity="0"/>
+      <geom name="left_cross3" type="capsule" size="0.008"
+            fromto="0.0 0.15 0.08  -0.06 0.15 0.08" material="frame_dark" mass="0.03"
+            contype="0" conaffinity="0"/>
+      <!-- Diagonal lattice elements -->
+      <geom name="left_diag1" type="capsule" size="0.006"
+            fromto="0.02 0.16 0.02  -0.05 0.12 0.22" material="frame_red" mass="0.02"
+            contype="0" conaffinity="0"/>
+      <geom name="left_diag2" type="capsule" size="0.006"
+            fromto="-0.06 0.16 0.02  -0.01 0.14 0.22" material="frame_red" mass="0.02"
+            contype="0" conaffinity="0"/>
+      <geom name="left_diag3" type="capsule" size="0.006"
+            fromto="-0.01 0.14 0.22  -0.05 0.11 0.32" material="frame_red" mass="0.02"
+            contype="0" conaffinity="0"/>
+      <geom name="left_diag4" type="capsule" size="0.006"
+            fromto="-0.05 0.12 0.22  -0.03 0.11 0.32" material="frame_red" mass="0.02"
+            contype="0" conaffinity="0"/>
+
+      <!-- ===== RIGHT LEG FRAME (red lattice truss) ===== -->
+      <!-- Main upright strut -->
+      <geom name="right_leg_main" type="capsule" size="0.012"
+            fromto="0.02 -0.16 0.02  -0.04 -0.10 0.42" material="frame_red" mass="0.15"
+            contype="0" conaffinity="0"/>
+      <!-- Rear upright strut -->
+      <geom name="right_leg_rear" type="capsule" size="0.012"
+            fromto="-0.06 -0.16 0.02  -0.04 -0.10 0.42" material="frame_red" mass="0.15"
+            contype="0" conaffinity="0"/>
+      <!-- Cross braces -->
+      <geom name="right_cross1" type="capsule" size="0.008"
+            fromto="0.02 -0.16 0.02  -0.06 -0.16 0.02" material="frame_dark" mass="0.03"
+            contype="0" conaffinity="0"/>
+      <geom name="right_cross2" type="capsule" size="0.008"
+            fromto="-0.01 -0.14 0.12  -0.05 -0.12 0.22" material="frame_dark" mass="0.03"
+            contype="0" conaffinity="0"/>
+      <geom name="right_cross3" type="capsule" size="0.008"
+            fromto="0.0 -0.15 0.08  -0.06 -0.15 0.08" material="frame_dark" mass="0.03"
+            contype="0" conaffinity="0"/>
+      <!-- Diagonal lattice elements -->
+      <geom name="right_diag1" type="capsule" size="0.006"
+            fromto="0.02 -0.16 0.02  -0.05 -0.12 0.22" material="frame_red" mass="0.02"
+            contype="0" conaffinity="0"/>
+      <geom name="right_diag2" type="capsule" size="0.006"
+            fromto="-0.06 -0.16 0.02  -0.01 -0.14 0.22" material="frame_red" mass="0.02"
+            contype="0" conaffinity="0"/>
+      <geom name="right_diag3" type="capsule" size="0.006"
+            fromto="-0.01 -0.14 0.22  -0.05 -0.11 0.32" material="frame_red" mass="0.02"
+            contype="0" conaffinity="0"/>
+      <geom name="right_diag4" type="capsule" size="0.006"
+            fromto="-0.05 -0.12 0.22  -0.03 -0.11 0.32" material="frame_red" mass="0.02"
+            contype="0" conaffinity="0"/>
+
+      <!-- ===== SHOCK ABSORBER / SPRING LINKAGES ===== -->
+      <!-- Left shock absorber -->
+      <geom name="left_shock_outer" type="capsule" size="0.014"
+            fromto="0.04 0.14 0.06  -0.02 0.11 0.28" material="spring_metal" mass="0.05"
+            contype="0" conaffinity="0"/>
+      <geom name="left_shock_inner" type="capsule" size="0.008"
+            fromto="-0.02 0.11 0.28  -0.04 0.10 0.36" material="axle_metal" mass="0.03"
+            contype="0" conaffinity="0"/>
+      <!-- Right shock absorber -->
+      <geom name="right_shock_outer" type="capsule" size="0.014"
+            fromto="0.04 -0.14 0.06  -0.02 -0.11 0.28" material="spring_metal" mass="0.05"
+            contype="0" conaffinity="0"/>
+      <geom name="right_shock_inner" type="capsule" size="0.008"
+            fromto="-0.02 -0.11 0.28  -0.04 -0.10 0.36" material="axle_metal" mass="0.03"
+            contype="0" conaffinity="0"/>
+
+      <!-- ===== BARREL BODY (large dark cylinder on top) ===== -->
+      <!-- Main barrel cylinder -->
+      <geom name="barrel_main" type="cylinder" size="0.16 0.18"
+            pos="-0.02 0 0.58" euler="0 0.15 0" material="barrel_body" mass="5.0"
+            contype="0" conaffinity="0"/>
+      <!-- Front cap -->
+      <geom name="barrel_cap_front" type="cylinder" size="0.16 0.005"
+            pos="-0.02 0 0.76" euler="0 0.15 0" material="barrel_cap" mass="0.1"
+            contype="0" conaffinity="0"/>
+      <!-- Rear cap -->
+      <geom name="barrel_cap_rear" type="cylinder" size="0.16 0.005"
+            pos="-0.02 0 0.40" euler="0 0.15 0" material="barrel_cap" mass="0.1"
+            contype="0" conaffinity="0"/>
+      <!-- Barrel ribs (decorative bands) -->
+      <geom name="barrel_rib1" type="cylinder" size="0.163 0.008"
+            pos="-0.02 0 0.50" euler="0 0.15 0" material="barrel_cap" mass="0.02"
+            contype="0" conaffinity="0"/>
+      <geom name="barrel_rib2" type="cylinder" size="0.163 0.008"
+            pos="-0.02 0 0.66" euler="0 0.15 0" material="barrel_cap" mass="0.02"
+            contype="0" conaffinity="0"/>
+      <!-- Barrel mounting bracket (connects barrel to legs) -->
+      <geom name="barrel_bracket_left" type="capsule" size="0.015"
+            fromto="-0.04 0.10 0.42  -0.03 0.08 0.48" material="axle_metal" mass="0.05"
+            contype="0" conaffinity="0"/>
+      <geom name="barrel_bracket_right" type="capsule" size="0.015"
+            fromto="-0.04 -0.10 0.42  -0.03 -0.08 0.48" material="axle_metal" mass="0.05"
+            contype="0" conaffinity="0"/>
+
+      <!-- ===== HANDLE / GRIP (on top rear of barrel) ===== -->
+      <geom name="handle_post_left" type="capsule" size="0.012"
+            fromto="-0.08 0.06 0.76  -0.10 0.06 0.88" material="axle_metal" mass="0.02"
+            contype="0" conaffinity="0"/>
+      <geom name="handle_post_right" type="capsule" size="0.012"
+            fromto="-0.08 -0.06 0.76  -0.10 -0.06 0.88" material="axle_metal" mass="0.02"
+            contype="0" conaffinity="0"/>
+      <geom name="handle_bar" type="capsule" size="0.015"
+            fromto="-0.10 0.06 0.88  -0.10 -0.06 0.88" material="handle_grip" mass="0.03"
+            contype="0" conaffinity="0"/>
+
+      <!-- ===== FOOT PEG PLATFORMS ===== -->
+      <geom name="left_footpeg" type="box" size="0.06 0.03 0.008"
+            pos="0.04 0.14 0.01" material="frame_dark" mass="0.05"
+            contype="0" conaffinity="0"/>
+      <geom name="right_footpeg" type="box" size="0.06 0.03 0.008"
+            pos="0.04 -0.14 0.01" material="frame_dark" mass="0.05"
+            contype="0" conaffinity="0"/>
+
+      <!-- ===== SENSOR SITE ===== -->
+      <site name="imu" pos="0 0 0.45" size="0.005"/>
+      <site name="barrel_center" pos="-0.02 0 0.58" size="0.005"/>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="left_motor"  joint="left_wheel_joint"  gear="1" ctrllimited="true" ctrlrange="-15 15"/>
+    <motor name="right_motor" joint="right_wheel_joint" gear="1" ctrllimited="true" ctrlrange="-15 15"/>
+  </actuator>
+
+  <sensor>
+    <!-- Orientation -->
+    <framequat name="body_quat" objtype="body" objname="chassis"/>
+    <gyro name="body_gyro" site="imu"/>
+    <accelerometer name="body_accel" site="imu"/>
+
+    <!-- Position / velocity -->
+    <framepos name="body_pos" objtype="body" objname="chassis"/>
+    <framelinvel name="body_vel" objtype="body" objname="chassis"/>
+
+    <!-- Wheel encoders -->
+    <jointpos name="left_wheel_pos"  joint="left_wheel_joint"/>
+    <jointvel name="left_wheel_vel"  joint="left_wheel_joint"/>
+    <jointpos name="right_wheel_pos" joint="right_wheel_joint"/>
+    <jointvel name="right_wheel_vel" joint="right_wheel_joint"/>
+  </sensor>
+</mujoco>
