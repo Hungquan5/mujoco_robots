@@ -472,7 +472,7 @@ def demo_ik_pick_and_place(controller, viewer=None):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main():
-    model_path = "/home/quannh/working/intern_vin/mujoco_robots/robot_arm/robot_arm.xml"
+    model_path = "/home/quannh49/workspace/mujoco_robots/robot_arm/robot_arm.xml"
 
     print("Loading model …")
     controller = RobotArmController(model_path)
