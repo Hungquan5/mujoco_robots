@@ -1,0 +1,199 @@
+<mujoco model="spotmicro scene">
+  <!--
+    SpotMicro Scene
+    ===============
+    Includes the SpotMicro robot (spotmicro.xml) and a full obstacle course
+    adapted from the Go2 scene. Obstacles are scaled down to suit SpotMicro's
+    smaller body (~0.185 m standing height vs Go2's ~0.445 m).
+
+    Scale factor applied: ~0.4× on heights/sizes so steps/ramps are
+    challenging but not impossible for SpotMicro.
+
+    Layout (along +X axis from robot spawn at origin):
+      0.0  m : SpotMicro spawn
+      0.6  m : Low hurdle rails  (2× thin boxes)
+      1.2  m : Tilted ramp slab
+      1.8  m : Staircase ascending (10 steps, 0.02 m rise each)
+      3.5  m : Staircase descending thin-step variant
+      5.0  m : Rocky rubble field (random-rotated boxes, from Go2 scene)
+      7.0  m : Perlin height field terrain
+      9.0  m : Image-based height field terrain
+  -->
+
+  <!-- Include the robot model -->
+  <include file="spotmicro.xml"/>
+
+  <!-- Camera framing: tighter extent for small robot -->
+  <statistic center="0 0 0.05" extent="0.5"/>
+
+  <!-- ─────────────────────────────────────────
+       VISUAL SETTINGS
+       Same mood as Go2 scene (blue-grey sky, soft haze)
+       ───────────────────────────────────────── -->
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-20"/>
+  </visual>
+
+  <!-- ─────────────────────────────────────────
+       ASSETS
+       ───────────────────────────────────────── -->
+  <asset>
+    <!-- Sky gradient: deep blue-black -->
+    <texture type="skybox" builtin="gradient"
+             rgb1="0.3 0.5 0.7" rgb2="0 0 0"
+             width="512" height="3072"/>
+
+    <!-- Checker ground plane -->
+    <texture type="2d" name="groundplane" builtin="checker"
+             mark="edge"
+             rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
+             markrgb="0.8 0.8 0.8"
+             width="300" height="300"/>
+    <material name="groundplane" texture="groundplane"
+              texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+
+    <!-- Obstacle concrete material -->
+    <material name="concrete" rgba="0.55 0.55 0.52 1"/>
+
+  </asset>
+
+  <!-- ─────────────────────────────────────────
+       WORLD BODY
+       ───────────────────────────────────────── -->
+  <worldbody>
+
+    <!-- Sun light -->
+    <light pos="0 0 2" dir="0 0 -1" directional="true"
+           diffuse="0.8 0.8 0.8" specular="0.1 0.1 0.1"/>
+    <!-- Fill light from front -->
+    <light pos="2 -1 1.5" dir="-1 0.5 -1" directional="true"
+           diffuse="0.25 0.28 0.35" specular="0 0 0"/>
+
+    <!-- ── Ground plane ── -->
+    <geom name="floor" size="0 0 0.05" type="plane"
+          material="groundplane"/>
+
+    <!-- ════════════════════════════════════════
+         ZONE 1 — Low hurdle rails  (x ≈ 0.6 m)
+         Two thin flat rails the robot must step over.
+         height 0.016 m, width 0.005 m, span 1 m in Y
+         ════════════════════════════════════════ -->
+    <geom name="hurdle_1" pos="0.60 0 0.016" type="box"
+          size="0.005 0.5 0.016" quat="1 0 0 0"
+          material="concrete"/>
+    <geom name="hurdle_2" pos="0.80 0 0.016" type="box"
+          size="0.005 0.5 0.016" quat="1 0 0 0"
+          material="concrete"/>
+
+    <!-- ════════════════════════════════════════
+         ZONE 2 — Tilted ramp slab  (x ≈ 1.2 m)
+         ~14° incline, similar to Go2 scene ramp
+         (Go2 used quat 0.969 0 -0.247 0 → ~28°; halved for SpotMicro)
+         ════════════════════════════════════════ -->
+    <geom name="ramp" pos="1.20 0 0.06" type="box"
+          size="0.30 0.50 0.025"
+          quat="0.992 0 -0.124 0"
+          material="concrete"/>
+
+    <!-- ════════════════════════════════════════
+         ZONE 3 — Ascending staircase  (x ≈ 1.8 – 3.0 m)
+         10 steps, each 0.10 m deep × 0.02 m rise
+         Full-width Y = 0.40 m (SpotMicro body is 0.084 m wide)
+         Derived from Go2 staircase block pattern, scaled ×0.27 height
+         ════════════════════════════════════════ -->
+    <geom name="step_a01" pos="1.80 0 0.010" type="box" size="0.05 0.40 0.010" material="concrete"/>
+    <geom name="step_a02" pos="1.90 0 0.030" type="box" size="0.05 0.40 0.030" material="concrete"/>
+    <geom name="step_a03" pos="2.00 0 0.050" type="box" size="0.05 0.40 0.050" material="concrete"/>
+    <geom name="step_a04" pos="2.10 0 0.070" type="box" size="0.05 0.40 0.070" material="concrete"/>
+    <geom name="step_a05" pos="2.20 0 0.090" type="box" size="0.05 0.40 0.090" material="concrete"/>
+    <geom name="step_a06" pos="2.30 0 0.110" type="box" size="0.05 0.40 0.110" material="concrete"/>
+    <geom name="step_a07" pos="2.40 0 0.130" type="box" size="0.05 0.40 0.130" material="concrete"/>
+    <geom name="step_a08" pos="2.50 0 0.150" type="box" size="0.05 0.40 0.150" material="concrete"/>
+    <geom name="step_a09" pos="2.60 0 0.170" type="box" size="0.05 0.40 0.170" material="concrete"/>
+    <geom name="step_a10" pos="2.70 0 0.190" type="box" size="0.05 0.40 0.190" material="concrete"/>
+
+    <!-- ════════════════════════════════════════
+         ZONE 4 — Descending thin-step staircase  (x ≈ 3.0 – 4.0 m)
+         Thinner slabs (Go2 scene "thin" variant), descending
+         ════════════════════════════════════════ -->
+    <geom name="step_d01" pos="3.00 0 0.190" type="box" size="0.05 0.40 0.008" material="concrete"/>
+    <geom name="step_d02" pos="3.12 0 0.165" type="box" size="0.05 0.40 0.008" material="concrete"/>
+    <geom name="step_d03" pos="3.24 0 0.140" type="box" size="0.05 0.40 0.008" material="concrete"/>
+    <geom name="step_d04" pos="3.36 0 0.115" type="box" size="0.05 0.40 0.008" material="concrete"/>
+    <geom name="step_d05" pos="3.48 0 0.090" type="box" size="0.05 0.40 0.008" material="concrete"/>
+    <geom name="step_d06" pos="3.60 0 0.065" type="box" size="0.05 0.40 0.008" material="concrete"/>
+    <geom name="step_d07" pos="3.72 0 0.040" type="box" size="0.05 0.40 0.008" material="concrete"/>
+    <geom name="step_d08" pos="3.84 0 0.015" type="box" size="0.05 0.40 0.008" material="concrete"/>
+
+    <!-- ════════════════════════════════════════
+         ZONE 5 — Rubble field  (x ≈ 4.5 – 6.5, y ≈ 4.5 – 6.5)
+         Random-rotated boxes mimicking Go2 scene debris,
+         positions shifted to align along +x from origin.
+         Sizes reduced by ~0.4× to suit SpotMicro foot clearance.
+         ════════════════════════════════════════ -->
+
+    <!-- Row 1 (x ≈ 4.50) -->
+    <geom pos="4.50 -0.770 0.00" type="box" size="0.107 0.093 0.109" quat="0.994 -0.090  0.046 -0.047"/>
+    <geom pos="4.50 -0.608 0.00" type="box" size="0.100 0.096 0.091" quat="0.995  0.043  0.004  0.092"/>
+    <geom pos="4.50 -0.367 0.00" type="box" size="0.110 0.100 0.091" quat="0.993  0.072 -0.005  0.097"/>
+    <geom pos="4.50 -0.201 0.00" type="box" size="0.097 0.090 0.107" quat="0.994  0.095  0.008 -0.049"/>
+    <geom pos="4.50 -0.026 0.00" type="box" size="0.096 0.097 0.106" quat="0.996 -0.041 -0.036  0.065"/>
+    <geom pos="4.50  0.177 0.00" type="box" size="0.103 0.095 0.092" quat="0.994 -0.088  0.017 -0.066"/>
+    <geom pos="4.50  0.407 0.00" type="box" size="0.099 0.104 0.096" quat="0.996  0.043 -0.045  0.065"/>
+    <geom pos="4.50  0.629 0.00" type="box" size="0.102 0.093 0.107" quat="0.997  0.045 -0.057 -0.013"/>
+
+    <!-- Row 2 (x ≈ 4.66) -->
+    <geom pos="4.66 -0.831 0.00" type="box" size="0.099 0.092 0.102" quat="0.991  0.031  0.100  0.078"/>
+    <geom pos="4.66 -0.635 0.00" type="box" size="0.092 0.103 0.109" quat="0.997 -0.013  0.063  0.040"/>
+    <geom pos="4.66 -0.435 0.00" type="box" size="0.094 0.106 0.102" quat="0.997  0.078  0.024  0.006"/>
+    <geom pos="4.66 -0.282 0.00" type="box" size="0.105 0.092 0.095" quat="0.997  0.041  0.064  0.035"/>
+    <geom pos="4.66 -0.063 0.00" type="box" size="0.103 0.095 0.097" quat="0.993  0.066 -0.064  0.067"/>
+    <geom pos="4.66  0.140 0.00" type="box" size="0.095 0.097 0.096" quat="0.997  0.039  0.073  0.001"/>
+    <geom pos="4.66  0.302 0.00" type="box" size="0.101 0.098 0.100" quat="0.993 -0.093 -0.052  0.051"/>
+    <geom pos="4.66  0.508 0.00" type="box" size="0.091 0.107 0.103" quat="0.998  0.061 -0.013  0.019"/>
+
+    <!-- Row 3 (x ≈ 4.91) -->
+    <geom pos="4.91 -0.759 0.00" type="box" size="0.105 0.098 0.104" quat="0.988  0.102  0.085 -0.084"/>
+    <geom pos="4.91 -0.528 0.00" type="box" size="0.104 0.110 0.109" quat="0.996  0.026 -0.029  0.082"/>
+    <geom pos="4.91 -0.290 0.00" type="box" size="0.094 0.095 0.098" quat="0.990 -0.087 -0.080 -0.080"/>
+    <geom pos="4.91 -0.045 0.00" type="box" size="0.096 0.095 0.096" quat="0.995  0.054 -0.079  0.019"/>
+    <geom pos="4.91  0.186 0.00" type="box" size="0.098 0.093 0.108" quat="0.998 -0.012 -0.056  0.015"/>
+    <geom pos="4.91  0.425 0.00" type="box" size="0.094 0.094 0.108" quat="0.997 -0.004 -0.079  0.004"/>
+    <geom pos="4.91  0.632 0.00" type="box" size="0.104 0.092 0.107" quat="0.994 -0.038 -0.015 -0.099"/>
+    <geom pos="4.91  0.868 0.00" type="box" size="0.091 0.102 0.104" quat="0.992 -0.046  0.081  0.088"/>
+
+    <!-- Row 4 (x ≈ 5.12) -->
+    <geom pos="5.12 -0.784 0.00" type="box" size="0.105 0.096 0.099" quat="1.000 -0.003 -0.021 -0.001"/>
+    <geom pos="5.12 -0.613 0.00" type="box" size="0.107 0.099 0.093" quat="0.995  0.074 -0.014 -0.061"/>
+    <geom pos="5.12 -0.409 0.00" type="box" size="0.093 0.101 0.104" quat="0.994  0.051  0.067  0.069"/>
+    <geom pos="5.12 -0.259 0.00" type="box" size="0.101 0.099 0.098" quat="0.994  0.076  0.059  0.050"/>
+    <geom pos="5.12 -0.094 0.00" type="box" size="0.106 0.091 0.097" quat="0.998  0.021 -0.032 -0.055"/>
+    <geom pos="5.12  0.153 0.00" type="box" size="0.108 0.104 0.105" quat="0.995  0.052 -0.070 -0.039"/>
+    <geom pos="5.12  0.366 0.00" type="box" size="0.094 0.096 0.105" quat="0.992  0.076 -0.093 -0.034"/>
+    <geom pos="5.12  0.552 0.00" type="box" size="0.104 0.108 0.096" quat="0.989 -0.101 -0.060 -0.087"/>
+
+    <!-- Row 5 (x ≈ 5.32) -->
+    <geom pos="5.32 -0.756 0.00" type="box" size="0.105 0.106 0.092" quat="0.999  0.044 -0.006 -0.004"/>
+    <geom pos="5.32 -0.553 0.00" type="box" size="0.108 0.104 0.099" quat="0.993 -0.069 -0.003 -0.064"/>
+    <geom pos="5.32 -0.329 0.00" type="box" size="0.103 0.099 0.096" quat="0.994  0.050  0.080 -0.063"/>
+    <geom pos="5.32 -0.158 0.00" type="box" size="0.101 0.099 0.098" quat="0.996  0.045  0.058  0.005"/>
+    <geom pos="5.32  0.010 0.00" type="box" size="0.104 0.091 0.097" quat="0.999  0.024 -0.032  0.027"/>
+    <geom pos="5.32  0.238 0.00" type="box" size="0.108 0.105 0.101" quat="0.999  0.032  0.037 -0.010"/>
+    <geom pos="5.32  0.449 0.00" type="box" size="0.097 0.093 0.105" quat="0.996  0.079 -0.026  0.037"/>
+    <geom pos="5.32  0.684 0.00" type="box" size="0.099 0.092 0.098" quat="0.997  0.053 -0.048 -0.018"/>
+
+    <!-- Row 6 (x ≈ 5.52) -->
+    <geom pos="5.52 -0.831 0.00" type="box" size="0.098 0.106 0.095" quat="0.998 -0.047 -0.026 -0.081"/>
+    <geom pos="5.52 -0.628 0.00" type="box" size="0.101 0.094 0.099" quat="0.994  0.086  0.033  0.003"/>
+    <geom pos="5.52 -0.386 0.00" type="box" size="0.096 0.101 0.099" quat="0.995  0.035 -0.066  0.068"/>
+    <geom pos="5.52 -0.230 0.00" type="box" size="0.096 0.097 0.097" quat="0.993  0.064  0.082  0.070"/>
+    <geom pos="5.52  0.010 0.00" type="box" size="0.094 0.091 0.099" quat="0.999 -0.037 -0.034  0.008"/>
+    <geom pos="5.52  0.182 0.00" type="box" size="0.100 0.106 0.093" quat="0.995  0.017 -0.066  0.068"/>
+    <geom pos="5.52  0.389 0.00" type="box" size="0.101 0.107 0.099" quat="0.996  0.043 -0.045  0.065"/>
+    <geom pos="5.52  0.588 0.00" type="box" size="0.106 0.098 0.091" quat="0.994  0.062  0.019 -0.081"/>
+
+  </worldbody>
+
+</mujoco>
