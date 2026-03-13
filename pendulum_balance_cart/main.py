@@ -201,7 +201,7 @@ def main():
     dt = model.opt.timestep
     K = init_controller(model,data)
     # Start with all poles pointing down
-    data.qpos[1] = 0
+    data.qpos[1] = 3.14
     data.qvel[1] = 0.1  # small initial perturbation to break zero-velocity deadlock
     with mujoco.viewer.launch_passive(model, data) as viewer:
         while viewer.is_running():

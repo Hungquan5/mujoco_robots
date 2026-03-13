@@ -3,19 +3,28 @@
     SpotMicro Quadruped Robot - MuJoCo MJCF
     ==========================================
     Procedural geometry model (no mesh files required).
-    All geoms are in group 1 (visible by default in MuJoCo viewer).
-    Collision and visual are unified — each geom serves both roles.
 
-    FIX: Removed class="collision" (group="3") and class="visual" (group="2")
-    separation that caused geoms to be hidden in the viewer. All robot
-    geoms now render in group 1 (always visible).
-
-    SpotMicro physical dimensions:
+    SpotMicro physical dimensions (from mike4192/spotMicro + community):
       Body         : 0.24 m (L) x 0.084 m (W) x 0.060 m (H)
-      Shoulder arm : 0.055 m  lateral offset
-      Upper leg    : 0.1085 m (thigh)
-      Lower leg    : 0.1385 m (calf / shin)
+      Shoulder arm : l1 = 0.055 m  lateral abduction offset
+      Thigh        : l3 = 0.1085 m
+      Calf         : l4 = 0.1385 m
       Foot sphere  : 0.015 m radius
+
+    KEYFRAME FIX (verified by forward kinematics):
+      Old keyframe: thigh=0.75, calf=-1.50
+        → foot_x=+0.020 (tilted forward), foot_z=-0.181 (4mm too high)
+        → body spawned at wrong height, robot collapses on load
+
+      Correct keyframe: thigh=0.8393, calf=-1.4618
+        → foot_x=0.000 (directly below shoulder) ✓
+        → foot_z=-0.185 (foot at ground when body at z=0.185) ✓
+        → verified by: -L3*cos(t2) - L4*cos(t2+t3) = -0.185
+
+    Joint sign convention (from MJCF axis definitions):
+      hip_joint:   axis="1 0 0"  positive = outward abduction
+      thigh_joint: axis="0 1 0"  positive = leg swings forward/down
+      calf_joint:  axis="0 1 0"  negative = knee bends backward (elbow-down)
 
     Color scheme:
       body shell  : dark charcoal  (0.18 0.18 0.20)
@@ -28,11 +37,10 @@
 
   <compiler angle="radian" autolimits="true"/>
 
-  <option cone="elliptic" impratio="10" gravity="0 0 -9.81"/>
+  <option cone="elliptic" impratio="10" timestep="0.001" gravity="0 0 -9.81" integrator="RK4"/>
 
   <default>
     <default class="spotmicro">
-      <!-- group 1 = always visible in MuJoCo viewer by default -->
       <geom group="1" friction="0.6" margin="0.001" condim="1"/>
       <joint axis="0 1 0" damping="0.05" armature="0.002" frictionloss="0.05"/>
       <motor ctrlrange="-3.2 3.2" gear="1"/>
@@ -44,11 +52,11 @@
         <joint range="-1.3963 1.7453"/>
       </default>
       <default class="knee">
+        <!-- Range covers both home (-1.4618) and sit (-2.1541) -->
         <joint range="-2.6180 -0.3491"/>
         <motor ctrlrange="-3.2 3.2"/>
       </default>
 
-      <!-- Foot: high friction sphere, black -->
       <default class="foot">
         <geom type="sphere" size="0.015" group="1"
               priority="1" condim="6"
@@ -68,6 +76,7 @@
 
   <worldbody>
 
+    <!-- body spawns at z=0.185 so feet (0.185m below shoulder) touch z=0 ground -->
     <body name="base_link" pos="0 0 0.185" childclass="spotmicro">
 
       <inertial pos="0 0 0" mass="0.560"
@@ -75,19 +84,17 @@
       <freejoint/>
       <site name="imu" pos="0 0 0.030"/>
 
-      <!-- ── Body ── -->
+      <!-- ── Body shell ── -->
       <geom name="body_main" type="box"
             size="0.120 0.042 0.028" pos="0 0 0"
             material="body_shell"/>
       <geom name="body_top" type="box"
             size="0.110 0.036 0.005" pos="0 0 0.030"
             material="body_shell"/>
-      <!-- White accent stripe (no collision needed) -->
       <geom name="accent_stripe" type="box"
             size="0.080 0.032 0.003" pos="0.005 0 0.036"
             contype="0" conaffinity="0"
             material="accent"/>
-      <!-- Front sensor face -->
       <geom name="sensor_bump" type="box"
             size="0.010 0.025 0.015" pos="0.128 0 0.005"
             contype="0" conaffinity="0"
@@ -100,10 +107,8 @@
         <inertial pos="0 0.028 0" mass="0.060"
                   diaginertia="0.000025 0.000060 0.000060"/>
         <joint name="FL_hip_joint" class="abduction"/>
-        <!-- Shoulder servo block -->
         <geom type="box" size="0.020 0.018 0.018"
               pos="0 0.018 0" material="shoulder"/>
-        <!-- Hip knuckle -->
         <geom type="cylinder" size="0.016 0.022"
               pos="0 0.040 0" quat="0.707107 0.707107 0 0"
               material="shoulder"/>
@@ -112,10 +117,8 @@
           <inertial pos="0 0 -0.054" mass="0.120"
                     diaginertia="0.000200 0.000200 0.000015"/>
           <joint name="FL_thigh_joint" class="hip"/>
-          <!-- Thigh link -->
           <geom type="box" size="0.014 0.013 0.050"
                 pos="0 0 -0.050" material="thigh"/>
-          <!-- Knee servo cap at top of thigh -->
           <geom type="cylinder" size="0.016 0.013"
                 pos="0 0 -0.002" material="shoulder"/>
 
@@ -123,13 +126,10 @@
             <inertial pos="0 0 -0.069" mass="0.060"
                       diaginertia="0.000100 0.000100 0.000006"/>
             <joint name="FL_calf_joint" class="knee"/>
-            <!-- Calf rod -->
             <geom type="cylinder" size="0.009 0.065"
                   pos="0 0 -0.065" material="calf"/>
-            <!-- Knee servo cap -->
             <geom type="cylinder" size="0.014 0.010"
                   pos="0 0 -0.002" material="shoulder"/>
-            <!-- Foot pad -->
             <geom name="FL" pos="0 0 -0.1385" class="foot"/>
             <body name="FL_foot" pos="0 0 -0.1385"/>
           </body>
@@ -317,28 +317,32 @@
 
   <!-- ─────────────────────────────────────────
        KEYFRAMES
+       Angles verified by forward kinematics:
+         thigh=0.8393, calf=-1.4618
+         → foot_x=0.000 (directly below shoulder) ✓
+         → foot_z=-0.185 (touches z=0 ground) ✓
        ───────────────────────────────────────── -->
   <keyframe>
     <key name="home"
          qpos="0 0 0.185  1 0 0 0
-               0  0.75 -1.50
-               0  0.75 -1.50
-               0  0.75 -1.50
-               0  0.75 -1.50"
-         ctrl="0 0.75 -1.50
-               0 0.75 -1.50
-               0 0.75 -1.50
-               0 0.75 -1.50"/>
+               0  0.8393 -1.4618
+               0  0.8393 -1.4618
+               0  0.8393 -1.4618
+               0  0.8393 -1.4618"
+         ctrl="0 0.8393 -1.4618
+               0 0.8393 -1.4618
+               0 0.8393 -1.4618
+               0 0.8393 -1.4618"/>
     <key name="sit"
-         qpos="0 0 0.110  1 0 0 0
-               0  1.20 -2.40
-               0  1.20 -2.40
-               0  1.20 -2.40
-               0  1.20 -2.40"
-         ctrl="0 1.20 -2.40
-               0 1.20 -2.40
-               0 1.20 -2.40
-               0 1.20 -2.40"/>
+         qpos="0 0 0.120  1 0 0 0
+               0  1.2990 -2.1541
+               0  1.2990 -2.1541
+               0  1.2990 -2.1541
+               0  1.2990 -2.1541"
+         ctrl="0 1.2990 -2.1541
+               0 1.2990 -2.1541
+               0 1.2990 -2.1541
+               0 1.2990 -2.1541"/>
   </keyframe>
 
 </mujoco>
