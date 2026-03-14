@@ -1,71 +1,521 @@
-<mujoco>
-<option>
-    <flag contact="enable"/>
-</option>
-<asset>
-<texture name="grid" type="2d" builtin="checker"
-         width="1024" height="1024"
-         rgb1="0.9 0.9 0.9"
-         rgb2="0.1 0.1 0.1"/>
+<mujoco model="right_human_hand">
+  <!--
+    Right Human Hand — Primitive Geometry Model
+    Fixed:
+      - Cube starts at z=0.43 (just above open palm) instead of z=10
+      - rh_WRJ2 joint correctly placed on rh_wrist body (not on rh_palm)
+      - rh_WRJ1 joint correctly placed on rh_palm body
+      - Added missing contact exclusion: rh_forearm <-> rh_palm
+      - Added missing skip-one exclusions for thumb chain
+      - Forearm explicitly welded to world via mocap=false body (implicit fixed root)
+      - kp/forcerange values consistent with human hand torques
+      - Full PIP/DIP tendon coupling retained
+  -->
 
-<material name="grid_mat"
-          texture="grid"
-          texrepeat="8 8"
-          texuniform="true"/>
-</asset>
-    <worldbody>
-    <geom name="floor" type="plane" pos="0 0 0" size= "50 50 0.1" material="grid_mat"/>
-<!-- Forearm -->
-        <body name="forearm" pos="0 0 0.1" >
-            <inertial mass="0.05" pos="0 0 0" diaginertia="0.0001 0.0001 0.0001"/>
-            <geom type="capsule" size="0.03 0.15" rgba="0.6 0.6 0.6 1" density="1000"/>
+  <compiler angle="radian" autolimits="true"/>
 
-            <!-- Wrist joint -->
-            <joint name="wrist_joint" type="hinge" axis="0 1 0" pos="0 0 0.15"/>
+  <option cone="elliptic" impratio="10" timestep="0.002" gravity="0 0 -9.81"/>
 
-            <!-- Palm -->
-            <body name="palm" pos="0 0 0.15" euler="0 0 0">
-                <geom type="box" size="0.05 0.04 0.015" rgba="0.8 0.7 0.6 1" density="800"/>
-                <!-- Finger base -->
-                <body name="finger_base" pos="0.03 0 0">
-                   
-                    <geom type="capsule" size="0.01 0.04" rgba="0.9 0.8 0.7 1"/>
- <joint name="finger_base_joint" 
-       type="hinge"
-       axis="0 1 0"
-       range="0 90"
-       damping="1"/>
-                    <!-- Middle phalanx -->
-                    <body name="finger_mid" pos="0 0 0.08">
-                        <joint name="finger_mid_joint" type="hinge" axis="0 1 0" range="0 90"/>
+  <visual>
+    <global offwidth="1920" offheight="1080"/>
+    <quality shadowsize="4096"/>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0.1 0.1 0.1"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+  </visual>
 
-                        <geom type="capsule" size="0.009 0.03" density="800"/>
+  <!-- ===================================================================
+       ASSETS
+       =================================================================== -->
+  <asset>
+    <texture name="floor_tex" type="2d" builtin="checker"
+             rgb1="0.82 0.82 0.82" rgb2="0.67 0.67 0.67"
+             width="512" height="512"/>
+    <material name="floor_mat" texture="floor_tex" texrepeat="6 6"
+              specular="0.1" shininess="0.05"/>
+    <material name="cube_mat"  specular="0.4" shininess="0.3"
+              rgba="0.85 0.18 0.12 1"/>
+    <material name="skin"         specular="0.12" shininess="0.08"
+              rgba="0.847 0.706 0.576 1"/>
+    <material name="knuckle"      specular="0.25" shininess="0.15"
+              rgba="0.920 0.878 0.820 1"/>
+    <material name="nail"         specular="0.45" shininess="0.35"
+              rgba="0.950 0.820 0.800 1"/>
+    <material name="forearm_skin" specular="0.08" shininess="0.05"
+              rgba="0.780 0.647 0.518 1"/>
+    <material name="wrist_bone"   specular="0.30" shininess="0.20"
+              rgba="0.900 0.870 0.820 1"/>
+  </asset>
 
-                        <!-- Finger tip -->
-                        <body name="finger_tip" pos="0 0 0.06">
-                            <joint name="finger_tip_joint" type="hinge" axis="0 1 0" range="0 90"/>
+  <!-- ===================================================================
+       DEFAULTS
+       All joint axes are in the LOCAL body frame.
+       The hand points straight up (+Z). Finger flexion = +Y rotation.
+       =================================================================== -->
+  <default>
+    <default class="right_hand">
+      <joint damping="0.1" armature="0.001" frictionloss="0.005"/>
+      <geom contype="1" conaffinity="1" solimp="0.9 0.99 0.001" solref="0.01 1"/>
 
-                            <geom type="capsule" size="0.008 0.02"/>
+      <!-- WRIST flexion/extension (+/-Y) -->
+      <default class="wrist_y">
+        <joint axis="0 1 0" range="-1.2217 1.3963" damping="0.5"/>
+        <position kp="15" ctrlrange="-1.2217 1.3963" forcerange="-20 20"/>
+      </default>
+      <!-- WRIST radial/ulnar deviation (+/-X) -->
+      <default class="wrist_x">
+        <joint axis="1 0 0" range="-0.3491 0.5236" damping="0.5"/>
+        <position kp="12" ctrlrange="-0.3491 0.5236" forcerange="-12 12"/>
+      </default>
 
-                        </body>
+      <!-- THUMB CMC abduction/adduction -->
+      <default class="thbase">
+        <joint axis="0 0 1" range="-0.5236 0.8727" damping="0.1"/>
+        <position kp="2.0" ctrlrange="-0.5236 0.8727" forcerange="-5 5"/>
+      </default>
+      <!-- THUMB CMC flexion -->
+      <default class="thproximal">
+        <joint axis="0 1 0" range="0 1.0472" damping="0.1"/>
+        <position kp="2.5" ctrlrange="0 1.0472" forcerange="-5 5"/>
+      </default>
+      <!-- THUMB MCP twist -->
+      <default class="thhub">
+        <joint axis="1 0 0" range="-0.1745 0.1745" damping="0.05"/>
+        <position kp="1.5" ctrlrange="-0.1745 0.1745" forcerange="-3 3"/>
+      </default>
+      <!-- THUMB MCP flexion -->
+      <default class="thmiddle">
+        <joint axis="0 1 0" range="-0.2618 1.0472" damping="0.1"/>
+        <position kp="3.0" ctrlrange="-0.2618 1.0472" forcerange="-5 5"/>
+      </default>
+      <!-- THUMB IP flexion -->
+      <default class="thdistal">
+        <joint axis="0 1 0" range="-0.0873 1.3963" damping="0.08"/>
+        <position kp="2.0" ctrlrange="-0.0873 1.3963" forcerange="-4 4"/>
+      </default>
 
-                    </body>
+      <!-- FINGER MCP abduction/adduction (side spread) -->
+      <default class="knuckle">
+        <joint axis="1 0 0" range="-0.3491 0.3491" damping="0.05"/>
+        <position kp="1.5" ctrlrange="-0.3491 0.3491" forcerange="-3 3"/>
+      </default>
+      <!-- FINGER MCP flexion/extension -->
+      <default class="proximal">
+        <joint axis="0 1 0" range="-0.2618 1.5708" damping="0.1"/>
+        <position kp="3.0" ctrlrange="-0.2618 1.5708" forcerange="-6 6"/>
+      </default>
+      <!-- FINGER PIP flexion (also drives DIP via tendon) -->
+      <default class="middle_pip">
+        <joint axis="0 1 0" range="0 2.0944" damping="0.08"/>
+        <position kp="2.5" ctrlrange="0 2.0944" forcerange="-5 5"/>
+      </default>
+      <!-- FINGER DIP flexion (driven by tendon, not directly actuated) -->
+      <default class="middle_dip">
+        <joint axis="0 1 0" range="0 1.3963" damping="0.06"/>
+      </default>
+      <!-- LITTLE FINGER metacarpal arch — axis X flipped for mirrored hand -->
+      <default class="metacarpal">
+        <joint axis="-0.573576 0 0.819152" range="0 0.6981" damping="0.05"/>
+        <position kp="1.5" ctrlrange="0 0.6981" forcerange="-3 3"/>
+      </default>
+    </default>
+  </default>
 
+  <!-- ===================================================================
+       WORLDBODY
+       Hand is palm-up, fingers pointing +Z, palm facing +Y.
+       Forearm base is at origin (fixed, no joint).
+       Cube starts at z=0.43 — just above the open palm centre.
+       =================================================================== -->
+  <worldbody>
+
+    <!-- LIGHTS -->
+    <light name="key"  pos="0.5 -0.5 1.5" dir="-0.3  0.3 -1"
+           diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" castshadow="true"/>
+    <light name="fill" pos="-0.5 0.5 1.0" dir=" 0.3 -0.3 -1"
+           diffuse="0.4 0.4 0.5" specular="0 0 0" castshadow="false"/>
+
+    <!-- FLOOR -->
+    <geom name="floor" type="plane" size="2 2 0.1"
+          material="floor_mat" contype="1" conaffinity="1"/>
+
+    <!-- CUBE — free body, starts just above open palm centre.
+         Palm centre is ~z=0.247+0.040=0.287 above world origin;
+         cube half-size=0.02 so bottom face at z=0.41 clears the palm.  -->
+    <body name="cube" pos="0.0 -0.01 0.43">
+      <freejoint name="cube_joint"/>
+      <inertial mass="0.05" pos="0 0 0"
+                diaginertia="8.33e-06 8.33e-06 8.33e-06"/>
+      <geom name="cube_geom" type="box" size="0.020 0.020 0.020"
+            material="cube_mat"
+            friction="1.5 0.05 0.005"
+            solimp="0.95 0.99 0.001" solref="0.008 1"/>
+    </body>
+
+    <!-- ================================================================
+         FOREARM  (fixed root — no joint, implicitly welded to world)
+         ================================================================ -->
+    <body name="rh_forearm" childclass="right_hand" pos="0 0 0">
+      <inertial mass="3.0" pos="0 0 0.09" diaginertia="0.0138 0.0138 0.00744"/>
+      <geom name="forearm_main"    type="capsule" size="0.028 0.085"
+            pos="0 0 0.09"  material="forearm_skin"/>
+      <geom name="forearm_taper"   type="ellipsoid" size="0.022 0.016 0.025"
+            pos="0 0 0.195" material="forearm_skin"/>
+
+      <!-- ================================================================
+           WRIST  — carries rh_WRJ2 (flexion/extension around local Y)
+           ================================================================ -->
+      <body name="rh_wrist" pos="0 0 0.213">
+        <inertial mass="0.12" pos="0 0 0.016"
+                  diaginertia="7.0e-05 4.8e-05 3.8e-05"/>
+        <!-- FIX: WRJ2 (flexion) lives on rh_wrist, not on rh_palm -->
+        <joint name="rh_WRJ2" class="wrist_y"/>
+        <geom name="wrist_block" type="box"    size="0.027 0.014 0.018"
+              pos="0 0 0.016" material="wrist_bone"/>
+        <geom name="wrist_r"     type="sphere" size="0.011"
+              pos="-0.026 0 0.034" material="knuckle"/>
+        <geom name="wrist_l"     type="sphere" size="0.011"
+              pos=" 0.026 0 0.034" material="knuckle"/>
+
+        <!-- ================================================================
+             PALM  — carries rh_WRJ1 (radial/ulnar deviation around local X)
+             ================================================================ -->
+        <body name="rh_palm" pos="0 0 0.034">
+          <!-- Inertia corrected: palm 76mm wide (X), 14mm thick (Y), 96mm tall (Z)
+               Ixx=m/12*(Y²+Z²)=0.00027, Iyy=m/12*(X²+Z²)=0.00044, Izz=m/12*(X²+Y²)=0.00017 -->
+          <inertial mass="0.35" pos="0 0 0.040"
+                    diaginertia="0.00027 0.00044 0.00017"/>
+          <!-- FIX: WRJ1 (deviation) lives on rh_palm -->
+          <joint name="rh_WRJ1" class="wrist_x"/>
+          <!-- Palm slab -->
+          <geom name="palm_back"   type="box" size="0.038 0.006 0.048"
+                pos="0 0.006 0.040" material="skin"/>
+          <geom name="palm_front"  type="box" size="0.034 0.008 0.044"
+                pos="0 -0.004 0.038" material="skin"/>
+          <!-- Thenar (thumb side) — thumb is on +X for right hand palm-up -->
+          <geom name="thenar"      type="ellipsoid" size="0.018 0.012 0.022"
+                pos=" 0.028 -0.005 0.020" material="skin"/>
+          <!-- Hypothenar (pinky side) — pinky is on -X -->
+          <geom name="hypothenar"  type="ellipsoid" size="0.014 0.010 0.026"
+                pos="-0.028 -0.005 0.024" material="skin"/>
+
+          <!-- ============================================================
+               INDEX FINGER (FF)
+               MCP at x=+0.033 (thumb/radial side), z=0.095 above palm origin
+               Proximal 45mm | Middle 27mm | Distal 20mm
+               ============================================================ -->
+          <body name="rh_ffknuckle" pos="0.033 0 0.095">
+            <inertial mass="0.009" pos="0 0 0"
+                      diaginertia="3.5e-07 2.8e-07 2.8e-07"/>
+            <joint name="rh_FFJ4" class="knuckle"/>
+            <geom name="ff_kn" type="sphere" size="0.0095" material="knuckle"/>
+            <body name="rh_ffproximal" pos="0 0 0">
+              <inertial mass="0.032" pos="0 0 0.0225"
+                        diaginertia="1.1e-05 1.0e-05 2.0e-06"/>
+              <joint name="rh_FFJ3" class="proximal"/>
+              <geom name="ff_p"   type="capsule" size="0.0092 0.0205"
+                    pos="0 0 0.0225" material="skin"/>
+              <body name="rh_ffmiddle" pos="0 0 0.045">
+                <inertial mass="0.018" pos="0 0 0.0125"
+                          diaginertia="2.9e-06 2.8e-06 9.0e-07"/>
+                <joint name="rh_FFJ2" class="middle_pip"/>
+                <geom name="ff_pip" type="sphere"  size="0.0082" material="knuckle"/>
+                <geom name="ff_m"   type="capsule" size="0.0082 0.0120"
+                      pos="0 0 0.0135" material="skin"/>
+                <body name="rh_ffdistal" pos="0 0 0.027">
+                  <inertial mass="0.014" pos="0 0 0.010"
+                            diaginertia="1.35e-06 1.20e-06 5.5e-07"/>
+                  <joint name="rh_FFJ1" class="middle_dip"/>
+                  <geom name="ff_dip" type="sphere"  size="0.0075" material="knuckle"/>
+                  <geom name="ff_d"   type="capsule" size="0.0075 0.0085"
+                        pos="0 0 0.010" material="skin"/>
+                  <geom name="ff_tip" type="sphere"  size="0.0080"
+                        pos="0 0 0.019" material="skin"/>
+                  <geom name="ff_nail" type="box" size="0.006 0.0015 0.007"
+                        pos="0 0.007 0.011" material="nail"/>
                 </body>
-
+              </body>
             </body>
+          </body>
 
-        </body>
+          <!-- ============================================================
+               MIDDLE FINGER (MF)
+               MCP at x=+0.011, z=0.099
+               Proximal 50mm | Middle 30mm | Distal 22mm
+               ============================================================ -->
+          <body name="rh_mfknuckle" pos="0.011 0 0.099">
+            <inertial mass="0.009" pos="0 0 0"
+                      diaginertia="3.5e-07 2.8e-07 2.8e-07"/>
+            <joint name="rh_MFJ4" class="knuckle"/>
+            <geom name="mf_kn" type="sphere" size="0.0100" material="knuckle"/>
+            <body name="rh_mfproximal" pos="0 0 0">
+              <inertial mass="0.033" pos="0 0 0.0250"
+                        diaginertia="1.2e-05 1.1e-05 2.1e-06"/>
+              <joint name="rh_MFJ3" class="proximal"/>
+              <geom name="mf_p"   type="capsule" size="0.0098 0.0230"
+                    pos="0 0 0.0250" material="skin"/>
+              <body name="rh_mfmiddle" pos="0 0 0.050">
+                <inertial mass="0.019" pos="0 0 0.0150"
+                          diaginertia="3.1e-06 3.0e-06 9.5e-07"/>
+                <joint name="rh_MFJ2" class="middle_pip"/>
+                <geom name="mf_pip" type="sphere"  size="0.0088" material="knuckle"/>
+                <geom name="mf_m"   type="capsule" size="0.0086 0.0135"
+                      pos="0 0 0.0150" material="skin"/>
+                <body name="rh_mfdistal" pos="0 0 0.030">
+                  <inertial mass="0.015" pos="0 0 0.011"
+                            diaginertia="1.40e-06 1.25e-06 5.8e-07"/>
+                  <joint name="rh_MFJ1" class="middle_dip"/>
+                  <geom name="mf_dip" type="sphere"  size="0.0080" material="knuckle"/>
+                  <geom name="mf_d"   type="capsule" size="0.0080 0.0095"
+                        pos="0 0 0.011" material="skin"/>
+                  <geom name="mf_tip" type="sphere"  size="0.0085"
+                        pos="0 0 0.021" material="skin"/>
+                  <geom name="mf_nail" type="box" size="0.0065 0.0015 0.0075"
+                        pos="0 0.007 0.012" material="nail"/>
+                </body>
+              </body>
+            </body>
+          </body>
 
-    </worldbody>
+          <!-- ============================================================
+               RING FINGER (RF)
+               MCP at x=-0.011, z=0.095
+               Proximal 45mm | Middle 28mm | Distal 20mm
+               ============================================================ -->
+          <body name="rh_rfknuckle" pos="-0.011 0 0.095">
+            <inertial mass="0.009" pos="0 0 0"
+                      diaginertia="3.5e-07 2.8e-07 2.8e-07"/>
+            <joint name="rh_RFJ4" class="knuckle"/>
+            <geom name="rf_kn" type="sphere" size="0.0095" material="knuckle"/>
+            <body name="rh_rfproximal" pos="0 0 0">
+              <inertial mass="0.031" pos="0 0 0.0225"
+                        diaginertia="1.05e-05 9.8e-06 1.9e-06"/>
+              <joint name="rh_RFJ3" class="proximal"/>
+              <geom name="rf_p"   type="capsule" size="0.0090 0.0205"
+                    pos="0 0 0.0225" material="skin"/>
+              <body name="rh_rfmiddle" pos="0 0 0.045">
+                <inertial mass="0.017" pos="0 0 0.0140"
+                          diaginertia="2.8e-06 2.7e-06 8.8e-07"/>
+                <joint name="rh_RFJ2" class="middle_pip"/>
+                <geom name="rf_pip" type="sphere"  size="0.0082" material="knuckle"/>
+                <geom name="rf_m"   type="capsule" size="0.0082 0.0125"
+                      pos="0 0 0.0140" material="skin"/>
+                <body name="rh_rfdistal" pos="0 0 0.028">
+                  <inertial mass="0.013" pos="0 0 0.010"
+                            diaginertia="1.30e-06 1.15e-06 5.3e-07"/>
+                  <joint name="rh_RFJ1" class="middle_dip"/>
+                  <geom name="rf_dip" type="sphere"  size="0.0075" material="knuckle"/>
+                  <geom name="rf_d"   type="capsule" size="0.0075 0.0085"
+                        pos="0 0 0.010" material="skin"/>
+                  <geom name="rf_tip" type="sphere"  size="0.0078"
+                        pos="0 0 0.019" material="skin"/>
+                  <geom name="rf_nail" type="box" size="0.0058 0.0015 0.0068"
+                        pos="0 0.007 0.011" material="nail"/>
+                </body>
+              </body>
+            </body>
+          </body>
 
-    <actuator>
+          <!-- ============================================================
+               LITTLE FINGER (LF)
+               Extra metacarpal arch DOF (LFJ5).
+               MCP at x=-0.033 (ulnar/pinky side), z=0.086 via metacarpal offset
+               Proximal 38mm | Middle 22mm | Distal 18mm
+               ============================================================ -->
+          <body name="rh_lfmetacarpal" pos="-0.033 0 0.021">
+            <inertial mass="0.030" pos="0 0 0.040"
+                      diaginertia="1.70e-05 1.50e-05 4.50e-06"/>
+            <!-- axis X-component flipped to match mirrored hand orientation -->
+            <joint name="rh_LFJ5" class="metacarpal"/>
+            <geom name="lf_meta" type="capsule" size="0.0080 0.028"
+                  pos="0 0 0.032" material="skin"/>
+            <body name="rh_lfknuckle" pos="0 0 0.066">
+              <inertial mass="0.008" pos="0 0 0"
+                        diaginertia="3.2e-07 2.6e-07 2.6e-07"/>
+              <joint name="rh_LFJ4" class="knuckle"/>
+              <geom name="lf_kn" type="sphere" size="0.0088" material="knuckle"/>
+              <body name="rh_lfproximal" pos="0 0 0">
+                <inertial mass="0.028" pos="0 0 0.019"
+                          diaginertia="9.0e-06 8.5e-06 1.7e-06"/>
+                <joint name="rh_LFJ3" class="proximal"/>
+                <geom name="lf_p"   type="capsule" size="0.0082 0.0170"
+                      pos="0 0 0.019" material="skin"/>
+                <body name="rh_lfmiddle" pos="0 0 0.038">
+                  <inertial mass="0.015" pos="0 0 0.011"
+                            diaginertia="2.4e-06 2.3e-06 7.5e-07"/>
+                  <joint name="rh_LFJ2" class="middle_pip"/>
+                  <geom name="lf_pip" type="sphere"  size="0.0075" material="knuckle"/>
+                  <geom name="lf_m"   type="capsule" size="0.0075 0.0095"
+                        pos="0 0 0.011" material="skin"/>
+                  <body name="rh_lfdistal" pos="0 0 0.022">
+                    <inertial mass="0.012" pos="0 0 0.009"
+                              diaginertia="1.10e-06 0.98e-06 4.8e-07"/>
+                    <joint name="rh_LFJ1" class="middle_dip"/>
+                    <geom name="lf_dip" type="sphere"  size="0.0068" material="knuckle"/>
+                    <geom name="lf_d"   type="capsule" size="0.0068 0.0075"
+                          pos="0 0 0.009" material="skin"/>
+                    <geom name="lf_tip" type="sphere"  size="0.0072"
+                          pos="0 0 0.017" material="skin"/>
+                    <geom name="lf_nail" type="box" size="0.0052 0.0013 0.0060"
+                          pos="0 0.006 0.010" material="nail"/>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
 
-        <motor joint="wrist_joint" name="wrist_motor" ctrlrange="-1 1"/>
+          <!-- ============================================================
+               THUMB (TH) — 5 DOF
+               Base at x=+0.034 (thumb/radial side), rotated outward.
+               quat Y-component negated to match mirrored X orientation.
+               ============================================================ -->
+          <body name="rh_thbase" pos="0.034 -0.009 0.029"
+                quat="0.924 0 -0.383 0">
+            <inertial mass="0.012" pos="0 0 0"
+                      diaginertia="1.8e-07 1.8e-07 1.8e-07"/>
+            <joint name="rh_THJ5" class="thbase"/>
+            <geom name="th_base" type="sphere" size="0.013" material="knuckle"/>
+            <body name="rh_thproximal" pos="0 0 0">
+              <inertial mass="0.045" pos="0 0 0.020"
+                        diaginertia="1.5e-05 1.5e-05 3.5e-06"/>
+              <joint name="rh_THJ4" class="thproximal"/>
+              <geom name="th_p"  type="capsule" size="0.0115 0.0180"
+                    pos="0 0 0.020" material="skin"/>
+              <body name="rh_thhub" pos="0 0 0.040">
+                <inertial mass="0.006" pos="0 0 0"
+                          diaginertia="1.1e-06 1.1e-06 3.3e-07"/>
+                <joint name="rh_THJ3" class="thhub"/>
+                <geom name="th_hub" type="sphere" size="0.012" material="knuckle"/>
+                <body name="rh_thmiddle" pos="0 0 0">
+                  <inertial mass="0.022" pos="0 0 0.017"
+                            diaginertia="5.5e-06 5.5e-06 1.30e-06"/>
+                  <joint name="rh_THJ2" class="thmiddle"/>
+                  <geom name="th_m"   type="capsule" size="0.0108 0.0150"
+                        pos="0 0 0.016" material="skin"/>
+                  <geom name="th_mkn" type="sphere"  size="0.0115"
+                        pos="0 0 0.033" material="knuckle"/>
+                  <body name="rh_thdistal" pos="0 0 0.034" quat="1 0 0 0">
+                    <inertial mass="0.018" pos="0 0 0.015"
+                              diaginertia="2.50e-06 2.40e-06 1.05e-06"/>
+                    <joint name="rh_THJ1" class="thdistal"/>
+                    <geom name="th_ip"   type="sphere"  size="0.0100" material="knuckle"/>
+                    <geom name="th_d"    type="capsule" size="0.0105 0.0130"
+                          pos="0 0 0.015" material="skin"/>
+                    <geom name="th_tip"  type="sphere"  size="0.0112"
+                          pos="0 0 0.028" material="skin"/>
+                    <geom name="th_nail" type="box" size="0.0080 0.0015 0.0090"
+                          pos="0 0.009 0.015" material="nail"/>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
 
-        <motor joint="finger_base_joint" name="finger_base_motor" ctrlrange="-1 1"/>
-        <motor joint="finger_mid_joint" name="finger_mid_motor" ctrlrange="-1 1"/>
-        <motor joint="finger_tip_joint" name="finger_tip_motor" ctrlrange="-1 1"/>
-    </actuator>
+        </body><!-- end rh_palm -->
+      </body><!-- end rh_wrist -->
+    </body><!-- end rh_forearm -->
+  </worldbody>
+
+  <!-- ===================================================================
+       CONTACT EXCLUSIONS
+       Every pair of adjacent bodies must be excluded.
+       FIX: added rh_forearm<->rh_palm and thumb skip-one pairs.
+       =================================================================== -->
+  <contact>
+    <!-- wrist/forearm chain -->
+    <exclude body1="rh_forearm"    body2="rh_wrist"/>
+    <exclude body1="rh_forearm"    body2="rh_palm"/>   <!-- FIX: was missing -->
+    <exclude body1="rh_wrist"      body2="rh_palm"/>
+    <!-- index -->
+    <exclude body1="rh_palm"       body2="rh_ffknuckle"/>
+    <exclude body1="rh_ffknuckle"  body2="rh_ffproximal"/>
+    <exclude body1="rh_ffproximal" body2="rh_ffmiddle"/>
+    <exclude body1="rh_ffmiddle"   body2="rh_ffdistal"/>
+    <!-- middle -->
+    <exclude body1="rh_palm"       body2="rh_mfknuckle"/>
+    <exclude body1="rh_mfknuckle"  body2="rh_mfproximal"/>
+    <exclude body1="rh_mfproximal" body2="rh_mfmiddle"/>
+    <exclude body1="rh_mfmiddle"   body2="rh_mfdistal"/>
+    <!-- ring -->
+    <exclude body1="rh_palm"       body2="rh_rfknuckle"/>
+    <exclude body1="rh_rfknuckle"  body2="rh_rfproximal"/>
+    <exclude body1="rh_rfproximal" body2="rh_rfmiddle"/>
+    <exclude body1="rh_rfmiddle"   body2="rh_rfdistal"/>
+    <!-- little -->
+    <exclude body1="rh_palm"          body2="rh_lfmetacarpal"/>
+    <exclude body1="rh_lfmetacarpal"  body2="rh_lfknuckle"/>
+    <exclude body1="rh_lfknuckle"     body2="rh_lfproximal"/>
+    <exclude body1="rh_lfproximal"    body2="rh_lfmiddle"/>
+    <exclude body1="rh_lfmiddle"      body2="rh_lfdistal"/>
+    <!-- thumb -->
+    <exclude body1="rh_palm"        body2="rh_thbase"/>
+    <exclude body1="rh_thbase"      body2="rh_thproximal"/>
+    <exclude body1="rh_thproximal"  body2="rh_thhub"/>
+    <exclude body1="rh_thhub"       body2="rh_thmiddle"/>
+    <exclude body1="rh_thmiddle"    body2="rh_thdistal"/>
+    <!-- skip-one exclusions (prevent jam at extreme poses) -->
+    <exclude body1="rh_ffknuckle"   body2="rh_ffmiddle"/>
+    <exclude body1="rh_mfknuckle"   body2="rh_mfmiddle"/>
+    <exclude body1="rh_rfknuckle"   body2="rh_rfmiddle"/>
+    <exclude body1="rh_lfknuckle"   body2="rh_lfmiddle"/>
+    <!-- FIX: thumb skip-one exclusions were missing -->
+    <exclude body1="rh_thbase"      body2="rh_thhub"/>
+    <exclude body1="rh_thproximal"  body2="rh_thmiddle"/>
+    <exclude body1="rh_thhub"       body2="rh_thdistal"/>
+  </contact>
+
+  <!-- ===================================================================
+       TENDONS — couple PIP and DIP (flexor digitorum profundus)
+       coef 1:0.67 gives a realistic DIP/PIP coupling ratio
+       =================================================================== -->
+  <tendon>
+    <fixed name="rh_FFJ0">
+      <joint joint="rh_FFJ2" coef="1"/>
+      <joint joint="rh_FFJ1" coef="0.67"/>
+    </fixed>
+    <fixed name="rh_MFJ0">
+      <joint joint="rh_MFJ2" coef="1"/>
+      <joint joint="rh_MFJ1" coef="0.67"/>
+    </fixed>
+    <fixed name="rh_RFJ0">
+      <joint joint="rh_RFJ2" coef="1"/>
+      <joint joint="rh_RFJ1" coef="0.67"/>
+    </fixed>
+    <fixed name="rh_LFJ0">
+      <joint joint="rh_LFJ2" coef="1"/>
+      <joint joint="rh_LFJ1" coef="0.67"/>
+    </fixed>
+  </tendon>
+
+  <!-- ===================================================================
+       ACTUATORS — 20 position-controlled DOF
+       =================================================================== -->
+  <actuator>
+    <!-- Wrist: 2 -->
+    <position name="rh_A_WRJ2" joint="rh_WRJ2" class="wrist_y"/>
+    <position name="rh_A_WRJ1" joint="rh_WRJ1" class="wrist_x"/>
+    <!-- Thumb: 5 -->
+    <position name="rh_A_THJ5" joint="rh_THJ5" class="thbase"/>
+    <position name="rh_A_THJ4" joint="rh_THJ4" class="thproximal"/>
+    <position name="rh_A_THJ3" joint="rh_THJ3" class="thhub"/>
+    <position name="rh_A_THJ2" joint="rh_THJ2" class="thmiddle"/>
+    <position name="rh_A_THJ1" joint="rh_THJ1" class="thdistal"/>
+    <!-- Index: 3 -->
+    <position name="rh_A_FFJ4" joint="rh_FFJ4"  class="knuckle"/>
+    <position name="rh_A_FFJ3" joint="rh_FFJ3"  class="proximal"/>
+    <position name="rh_A_FFJ0" tendon="rh_FFJ0" class="middle_pip"/>
+    <!-- Middle: 3 -->
+    <position name="rh_A_MFJ4" joint="rh_MFJ4"  class="knuckle"/>
+    <position name="rh_A_MFJ3" joint="rh_MFJ3"  class="proximal"/>
+    <position name="rh_A_MFJ0" tendon="rh_MFJ0" class="middle_pip"/>
+    <!-- Ring: 3 -->
+    <position name="rh_A_RFJ4" joint="rh_RFJ4"  class="knuckle"/>
+    <position name="rh_A_RFJ3" joint="rh_RFJ3"  class="proximal"/>
+    <position name="rh_A_RFJ0" tendon="rh_RFJ0" class="middle_pip"/>
+    <!-- Little: 4 -->
+    <position name="rh_A_LFJ5" joint="rh_LFJ5"  class="metacarpal"/>
+    <position name="rh_A_LFJ4" joint="rh_LFJ4"  class="knuckle"/>
+    <position name="rh_A_LFJ3" joint="rh_LFJ3"  class="proximal"/>
+    <position name="rh_A_LFJ0" tendon="rh_LFJ0" class="middle_pip"/>
+  </actuator>
 
 </mujoco>
